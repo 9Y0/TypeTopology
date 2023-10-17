@@ -24,4 +24,4 @@ html/*
 source/html/*
 *.DS_Store
 #*
-
+.vscode
