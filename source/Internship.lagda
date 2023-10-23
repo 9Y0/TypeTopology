@@ -29,11 +29,6 @@ module Internship
         (𝓥 : Universe) -- where the index types for directed completeness live
        where
 
-_$_ : ∀ {a b} {A : Set a} {B : A → Set b} →
-        ((x : A) → B x) → ((x : A) → B x)
-f $ x = f x
-infixr -1 _$_
-
 open PropositionalTruncation pt
 
 open import Posets.Poset fe
@@ -44,12 +39,6 @@ open import DomainTheory.Basics.Pointed pt fe 𝓥 renaming (⊥ to least)
 
 open import Categories.Category fe
 
-module _ {𝓤 : Universe} -- where lifted type lives
-         (A : 𝓤 ̇ )
-         (𝓦 : Universe) -- where the carrier lives
-         (𝓣 : Universe) -- where the truth values live
-        where
-
 \end{code}
 
 A directed partiality algebra over A is a pointed DCPO 𝓓, together with an
@@ -57,39 +46,39 @@ inclusion A → ⟪ 𝓓 ⟫
 
 \begin{code}
 
- record DPartOb : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺ ̇  where
-  field
-   𝓓 : DCPO⊥ {𝓦} {𝓣}
-   η : A → ⟪ 𝓓 ⟫
+record DPartOb
+        {𝓤 : Universe} -- where the type to lift lives
+        (A : 𝓤 ̇ )      -- the type to lift
+        (𝓦 : Universe) -- where the carrier lives
+        (𝓣 : Universe) -- where the truth values live
+       : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺ ̇  where
+ field
+  𝓓 : DCPO⊥ {𝓦} {𝓣}
+  η : A → ⟪ 𝓓 ⟫
 
- underlying-DCPO⊥ : DPartOb → DCPO⊥
- underlying-DCPO⊥ X = 𝓓
-  where
-   open DPartOb X
+DPartOb＝ : {A : 𝓤 ̇ } {X Y : DPartOb A 𝓦 𝓣}
+          → let module X = DPartOb X
+                module Y = DPartOb Y
+         in (p : ⟪ X.𝓓 ⟫ ＝ ⟪ Y.𝓓 ⟫)
+          → (λ y₁ y₂ → idtofun _ _ (p ⁻¹) y₁ ⊑⟪ X.𝓓 ⟫ idtofun _ _ (p ⁻¹) y₂) ＝ underlying-order⊥ Y.𝓓
+          → idtofun _ _ p (least X.𝓓) ＝ (least Y.𝓓)
+          → idtofun _ _ p ∘ X.η ＝ Y.η
+          → X ＝ Y
+DPartOb＝ {X = X} {Y} refl refl refl refl = γ p q
+ where
+  module X = DPartOb X
+  module Y = DPartOb Y
 
- DPartOb＝ : {X Y : DPartOb}
-           → let module X = DPartOb X
-                 module Y = DPartOb Y
-          in (p : ⟪ X.𝓓 ⟫ ＝ ⟪ Y.𝓓 ⟫)
-           → (λ y₁ y₂ → idtofun _ _ (p ⁻¹) y₁ ⊑⟪ X.𝓓 ⟫ idtofun _ _ (p ⁻¹) y₂) ＝ underlying-order⊥ Y.𝓓
-           → idtofun _ _ p (least X.𝓓) ＝ (least Y.𝓓)
-           → idtofun _ _ p ∘ X.η ＝ Y.η
-           → X ＝ Y
- DPartOb＝ {X} {Y} refl refl refl refl = γ p q
-  where
-   module X = DPartOb X
-   module Y = DPartOb Y
+  p : ⊥-is-least X.𝓓 ＝ ⊥-is-least Y.𝓓
+  p = Π-is-prop fe (prop-valuedness (X.𝓓 ⁻) _) _ _
 
-   p : ⊥-is-least X.𝓓 ＝ ⊥-is-least Y.𝓓
-   p = Π-is-prop fe (prop-valuedness (X.𝓓 ⁻) _) _ _
+  q : axioms-of-dcpo (X.𝓓 ⁻) ＝ axioms-of-dcpo (Y.𝓓 ⁻)
+  q = dcpo-axioms-is-prop (underlying-order⊥ X.𝓓) _ _
 
-   q : axioms-of-dcpo (X.𝓓 ⁻) ＝ axioms-of-dcpo (Y.𝓓 ⁻)
-   q = dcpo-axioms-is-prop (underlying-order⊥ X.𝓓) _ _
-
-   γ : ⊥-is-least X.𝓓 ＝ ⊥-is-least Y.𝓓
-     → axioms-of-dcpo (X.𝓓 ⁻) ＝ axioms-of-dcpo (Y.𝓓 ⁻)
-     → _ ＝ _
-   γ refl refl = refl
+  γ : ⊥-is-least X.𝓓 ＝ ⊥-is-least Y.𝓓
+    → axioms-of-dcpo (X.𝓓 ⁻) ＝ axioms-of-dcpo (Y.𝓓 ⁻)
+    → _ ＝ _
+  γ refl refl = refl
 
 \end{code}
 
@@ -97,50 +86,51 @@ DPartOb is equivalent to the Sigma type corresponding to the one given in [1].
 
 \begin{code}
 
- DPartAxioms : {X : 𝓦 ̇ } (_⊑_ : X → X → 𝓣 ̇ ) (⊥ : X)
-               (∐ : ({I : 𝓥 ̇ } → (Σ α ꞉ (I → X) , is-directed _⊑_ α) → X))
-             → 𝓥 ⁺ ⊔ 𝓦 ⊔ 𝓣 ̇ 
- DPartAxioms {X} _⊑_ ⊥ ∐ =
-  PosetAxioms.poset-axioms _⊑_ ×
-  is-least _⊑_ ⊥ × 
-  ({I : 𝓥 ̇ } {α : I → X} (p : is-directed _⊑_ α) → is-sup _⊑_ (∐ (α , p)) α)
+DPartAxioms : {X : 𝓦 ̇ } (_⊑_ : X → X → 𝓣 ̇ ) (⊥ : X)
+              (∐ : ({I : 𝓥 ̇ } → (Σ α ꞉ (I → X) , is-directed _⊑_ α) → X))
+            → 𝓥 ⁺ ⊔ 𝓦 ⊔ 𝓣 ̇ 
+DPartAxioms {X = X} _⊑_ ⊥ ∐ =
+ PosetAxioms.poset-axioms _⊑_ ×
+ is-least _⊑_ ⊥ × 
+ ({I : 𝓥 ̇ } {α : I → X} (p : is-directed _⊑_ α) → is-sup _⊑_ (∐ (α , p)) α)
 
- DPartOb' : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺ ̇
- DPartOb' =
-  Σ X ꞉ 𝓦 ̇ ,
-  Σ _⊑_ ꞉ (X → X → 𝓣 ̇ ) ,
-  Σ ⊥ ꞉ X ,
-  Σ η ꞉ (A → X) ,
-  Σ ∐ ꞉ ({I : 𝓥 ̇ } → (Σ α ꞉ (I → X) , is-directed _⊑_ α) → X) ,
-   (DPartAxioms _⊑_ ⊥ ∐)
+DPartOb' : (A : 𝓤 ̇ ) (𝓦 𝓣 : Universe) → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺ ̇
+DPartOb' A 𝓦 𝓣 =
+ Σ X ꞉ 𝓦 ̇ ,
+ Σ _⊑_ ꞉ (X → X → 𝓣 ̇ ) ,
+ Σ ⊥ ꞉ X ,
+ Σ η ꞉ (A → X) ,
+ Σ ∐ ꞉ ({I : 𝓥 ̇ } → (Σ α ꞉ (I → X) , is-directed _⊑_ α) → X) ,
+  (DPartAxioms _⊑_ ⊥ ∐)
 
- DPartOb≃DPartOb' : DPartOb ≃ DPartOb'
- DPartOb≃DPartOb' = qinveq f (g , gf , fg)
-  where
-   f : DPartOb → DPartOb'
-   f X = ⟪ 𝓓 ⟫ ,
-         underlying-order⊥ 𝓓 ,
-         least 𝓓 ,
-         η ,
-         (λ (α , p) → ∐ (𝓓 ⁻) p) ,
-         pr₁ (axioms-of-dcpo (𝓓 ⁻)) ,
-         ⊥-is-least 𝓓 ,
-         ∐-is-sup (𝓓 ⁻)
-    where
-     open DPartOb X
+DPartOb≃DPartOb' : {A : 𝓤 ̇ } {𝓦 𝓣 : Universe}
+                 → DPartOb A 𝓦 𝓣  ≃ DPartOb' A 𝓦 𝓣
+DPartOb≃DPartOb' {A = A} {𝓦} {𝓣} = qinveq f (g , gf , fg)
+ where
+  f : DPartOb A 𝓦 𝓣  → DPartOb' A 𝓦 𝓣
+  f X = ⟪ 𝓓 ⟫ ,
+        underlying-order⊥ 𝓓 ,
+        least 𝓓 ,
+        η ,
+        (λ (α , p) → ∐ (𝓓 ⁻) p) ,
+        pr₁ (axioms-of-dcpo (𝓓 ⁻)) ,
+        ⊥-is-least 𝓓 ,
+        ∐-is-sup (𝓓 ⁻)
+   where
+    open DPartOb X
 
-   g : DPartOb' → DPartOb
-   g (X , _⊑ₓ_ , ⊥ₓ , ηₓ , ∐ₓ , pa , ⊥ₓ-is-least , ∐ₓ-is-sup) =
-    record { 𝓓 = 𝓓 , ⊥ₓ , ⊥ₓ-is-least ; η = ηₓ }
-    where
-     𝓓 : DCPO {𝓦} {𝓣}
-     𝓓 = X , _⊑ₓ_ , pa , (λ I α p → ∐ₓ (α , p) , ∐ₓ-is-sup p)
+  g : DPartOb' A 𝓦 𝓣 → DPartOb A 𝓦 𝓣
+  g (X , _⊑ₓ_ , ⊥ₓ , ηₓ , ∐ₓ , pa , ⊥ₓ-is-least , ∐ₓ-is-sup) =
+   record { 𝓓 = 𝓓 , ⊥ₓ , ⊥ₓ-is-least ; η = ηₓ }
+   where
+    𝓓 : DCPO {𝓦} {𝓣}
+    𝓓 = X , _⊑ₓ_ , pa , (λ I α p → ∐ₓ (α , p) , ∐ₓ-is-sup p)
 
-   gf : g ∘ f ∼ id
-   gf X = DPartOb＝ refl refl refl refl
+  gf : g ∘ f ∼ id
+  gf X = DPartOb＝ refl refl refl refl
 
-   fg : f ∘ g ∼ id
-   fg _ = refl
+  fg : f ∘ g ∼ id
+  fg _ = refl
 
 \end{code}
 
@@ -149,7 +139,12 @@ preserves the inclusions of A.
 
 \begin{code}
 
- record DPartHom (X Y : DPartOb) : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓣 ̇  where
+module _ {𝓤 : Universe} {A : 𝓤 ̇ }
+         {𝓦₁ 𝓦₂ 𝓣₁ 𝓣₂ : Universe}
+        where
+
+ record DPartHom (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+        : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦₁ ⊔ 𝓦₂ ⊔ 𝓣₁ ⊔ 𝓣₂ ̇  where
   module X = DPartOb X
   module Y = DPartOb Y
 
@@ -158,7 +153,7 @@ preserves the inclusions of A.
    f-strict : [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ (least X.𝓓) ＝ least Y.𝓓
    f-η : [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ ∘ X.η ＝ Y.η
 
- DPart[_,_]⟨_⟩ : (X Y : DPartOb)
+ DPart[_,_]⟨_⟩ : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
                → let module X = DPartOb X
                      module Y = DPartOb Y
               in (f : DPartHom X Y) → ⟪ X.𝓓 ⟫ → ⟪ Y.𝓓 ⟫
@@ -168,7 +163,8 @@ preserves the inclusions of A.
    module Y = DPartOb Y
    module f = DPartHom f
 
- continuity-of-DPartHom : (X Y : DPartOb) (f : DPartHom X Y)
+ continuity-of-DPartHom : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                          (f : DPartHom X Y)
                         → let module X = DPartOb X
                               module Y = DPartOb Y
                        in is-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) DPart[ X , Y ]⟨ f ⟩
@@ -178,8 +174,7 @@ preserves the inclusions of A.
    module Y = DPartOb Y
    module f = DPartHom f
 
-
- DPartHom＝ : {X Y : DPartOb} {f g : DPartHom X Y}
+ DPartHom＝ : {X : DPartOb A 𝓦₁ 𝓣₁} {Y : DPartOb A 𝓦₂ 𝓣₂} {f g : DPartHom X Y}
             → DPart[ X , Y ]⟨ f ⟩ ＝ DPart[ X , Y ]⟨ g ⟩
             → f ＝ g
  DPartHom＝ {X} {Y} {f} {g} refl = γ p q r
@@ -215,8 +210,8 @@ We use this to prove that DPartHom is a set.
 
 \begin{code}
 
- image-is-directed-if-monotone : {I : 𝓥 ̇ } {X H : 𝓦 ̇ } {α : I → X} {f : X → H}
-                               → (_⊑ₓ_ : X → X → 𝓣 ̇ ) (_⊑ₕ_ : H → H → 𝓣 ̇ )
+ image-is-directed-if-monotone : {I : 𝓥 ̇ } {X : 𝓦₁ ̇ } {H : 𝓦₂ ̇ } {α : I → X} {f : X → H}
+                               → (_⊑ₓ_ : X → X → 𝓣₁ ̇ ) (_⊑ₕ_ : H → H → 𝓣₂ ̇ )
                                → (f⊑ : (x₁ x₂ : X) → x₁ ⊑ₓ x₂ → f x₁ ⊑ₕ f x₂)
                                → (p : is-directed _⊑ₓ_ α)
                                → is-directed _⊑ₕ_ (f ∘ α)
@@ -226,7 +221,7 @@ We use this to prove that DPartHom is a set.
            (λ (k , αᵢ⊑αₖ , αⱼ⊑αₖ) → k , f⊑ _ _ αᵢ⊑αₖ , f⊑ _ _ αⱼ⊑αₖ)
            (semidirected-if-directed _⊑ₓ_ α p i j)
 
- DPartHom' : DPartOb' → DPartOb' → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓣 ̇
+ DPartHom' : DPartOb' A 𝓦₁ 𝓣₁  → DPartOb' A 𝓦₂ 𝓣₂ → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦₁ ⊔ 𝓦₂ ⊔ 𝓣₁ ⊔ 𝓣₂ ̇
  DPartHom' (X , _⊑ₓ_ , ⊥ₓ , ηₓ , ∐ₓ , _) (H , _⊑ₕ_ , ⊥ₕ , ηₕ , ∐ₕ , _) =
   Σ f ꞉ (X → H) ,
   Σ f⊑ ꞉ ((x₁ x₂ : X) → x₁ ⊑ₓ x₂ → f x₁ ⊑ₕ f x₂) ,
@@ -235,7 +230,7 @@ We use this to prove that DPartHom is a set.
    ({I : 𝓥 ̇ } (α : I → X) (p : is-directed _⊑ₓ_ α) →
     f (∐ₓ (α , p)) ＝ ∐ₕ (f ∘ α , image-is-directed-if-monotone _⊑ₓ_ _⊑ₕ_ f⊑ p))
 
- DPartHom≃DPartHom' : (X Y : DPartOb)
+ DPartHom≃DPartHom' : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
                     → DPartHom X Y
                     ≃ DPartHom' (⌜ DPartOb≃DPartOb' ⌝ X) (⌜ DPartOb≃DPartOb' ⌝ Y)
  DPartHom≃DPartHom' X Y = qinveq ψ (ϕ , ϕψ , ψϕ)
@@ -277,7 +272,8 @@ We use this to prove that DPartHom is a set.
    ψϕ : ψ ∘ ϕ ∼ id
    ψϕ f = {!   !}
 
- DPartHom'-is-set : (X H : DPartOb') → is-set (DPartHom' X H)
+ DPartHom'-is-set : (X : DPartOb' A 𝓦₁ 𝓣₁) (H : DPartOb' A 𝓦₂ 𝓣₂)
+                  → is-set (DPartHom' X H)
  DPartHom'-is-set (X , _⊑ₓ_ , ⊥ₓ , ηₓ , ∐ₓ , paₓ , ⊥ₓ-is-least , ∐ₓ-is-sup)
                   (H , _⊑ₕ_ , ⊥ₕ , ηₕ , ∐ₕ , paₕ , ⊥ₕ-is-least , ∐ₕ-is-sup) =
   Σ-is-set
@@ -298,7 +294,8 @@ We use this to prove that DPartHom is a set.
    ⊑ₕ-prop-valued : PosetAxioms.is-prop-valued _⊑ₕ_
    ⊑ₕ-prop-valued = pr₁ (pr₂ paₕ)
 
- DPartHom-is-set : (X Y : DPartOb) → is-set (DPartHom X Y)
+ DPartHom-is-set : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                 → is-set (DPartHom X Y)
  DPartHom-is-set X Y =
   equiv-to-set
    (DPartHom≃DPartHom' X Y)
@@ -308,40 +305,39 @@ We use this to prove that DPartHom is a set.
 
 \begin{code}
 
- DPartId : (X : DPartOb) → DPartHom X X
- DPartId X =
-  record
-   { f = id , λ I α → ∐-is-sup (𝓓 ⁻)
-   ; f-strict = refl
-   ; f-η = refl }
-  where
-   open DPartOb X
+DPartId : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣) → DPartHom X X
+DPartId X =
+ record
+  { f = id , λ I α → ∐-is-sup (𝓓 ⁻)
+  ; f-strict = refl
+  ; f-η = refl }
+ where
+  open DPartOb X
 
- DPartComp : (X Y Z : DPartOb) → DPartHom X Y → DPartHom Y Z → DPartHom X Z
- DPartComp X Y Z f g =
-  record
-   { f = DPart[ Y , Z ]⟨ g ⟩ ∘ DPart[ X , Y ]⟨ f ⟩ ,
-         ∘-is-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) (Z.𝓓 ⁻)
-          DPart[ X , Y ]⟨ f ⟩ DPart[ Y , Z ]⟨ g ⟩
-          (continuity-of-DPartHom X Y f)
-          (continuity-of-DPartHom Y Z g)
-   ; f-strict = ap DPart[ Y , Z ]⟨ g ⟩ f.f-strict ∙ g.f-strict
-   ; f-η = ap (DPart[ Y , Z ]⟨ g ⟩ ∘_) f.f-η ∙ g.f-η }
-  where
-   module f = DPartHom f
-   module g = DPartHom g
-   module X = DPartOb X
-   module Y = DPartOb Y
-   module Z = DPartOb Z
+DPartComp : {A : 𝓤 ̇ } {𝓦₁ 𝓦₂ 𝓦₃ 𝓣₁ 𝓣₂ 𝓣₃ : Universe}
+            (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂) (Z : DPartOb A 𝓦₃ 𝓣₃)
+          → DPartHom X Y → DPartHom Y Z → DPartHom X Z
+DPartComp X Y Z f g =
+ record
+  { f = DCPO-∘ (X.𝓓 ⁻) (Y.𝓓 ⁻) (Z.𝓓 ⁻) f.f g.f
+  ; f-strict = ap DPart[ Y , Z ]⟨ g ⟩ f.f-strict ∙ g.f-strict
+  ; f-η = ap (DPart[ Y , Z ]⟨ g ⟩ ∘_) f.f-η ∙ g.f-η }
+ where
+  module f = DPartHom f
+  module g = DPartHom g
+  module X = DPartOb X
+  module Y = DPartOb Y
+  module Z = DPartOb Z
 
- DPartPre : precategory (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺) (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓣)
- DPartPre =
-  make
-   (DPartOb , DPartHom , DPartId , DPartComp)
-   (DPartHom-is-set ,
-    (λ X Y f → DPartHom＝ refl) ,
-    (λ X Y f → DPartHom＝ refl) ,
-    λ X Y Z W f g h → DPartHom＝ refl)
+DPartPre : (A : 𝓤 ̇ ) (𝓦 𝓣 : Universe)
+         → precategory (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺) (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓣)
+DPartPre A 𝓦 𝓣 =
+ make
+  (DPartOb A 𝓦 𝓣 , DPartHom , DPartId , DPartComp)
+  (DPartHom-is-set ,
+   (λ X Y f → DPartHom＝ refl) ,
+   (λ X Y f → DPartHom＝ refl) ,
+   λ X Y Z W f g h → DPartHom＝ refl)
 
 \end{code}
 
@@ -372,11 +368,13 @@ data Leq A where
  Leq-refl : (x : A ⊥) → Leq A x x
  Leq-trans : (x y z : A ⊥) → Leq A x y → Leq A y z → Leq A x z
  bot-leq : (x : A ⊥) → Leq A bot x
+ -- FIXME: If we figure out what to do with wrong-is-directed, it would be
+ --        better to replace these two constructors with a single is-sup constr
  lub-upperbound : {I : 𝓥 ̇ } {α : I → A ⊥} (p : wrong-is-directed (Leq A) α)
                   (i : I) → Leq A (α i) (lub (α , p))
- lub-lowest : {I : 𝓥 ̇ } {α : I → A ⊥} (p : wrong-is-directed (Leq A) α) {x : A ⊥}
-            → ((i : I) → Leq A (α i) x)
-            → Leq A (lub (α , p)) x
+ lub-lowest : {I : 𝓥 ̇ } {α : I → A ⊥} (p : wrong-is-directed (Leq A) α) (v : A ⊥)
+            → ((i : I) → Leq A (α i) v)
+            → Leq A (lub (α , p)) v
 
 -- FIXME: This is very close to the x ⊑⟨ 𝓓 ⟩ y syntax of DCPOs, probably not a good idea...
 syntax Leq A x y = x ⊑[ A ] y            
@@ -385,17 +383,83 @@ postulate
  Leq-is-prop-valued : {A : 𝓤 ̇ } (x y : A ⊥) → is-prop (x ⊑[ A ] y)
  Leq-anti-sym : {A : 𝓤 ̇ } (x y : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] x → x ＝ y
 
- -- TODO: Elimination principle for A ⊥, Leq A, we probably need more category theory for that
-
-lift-is-DPart : (A : 𝓤 ̇ ) → DPartOb A (𝓥 ⁺ ⊔ 𝓤) (𝓥 ⁺ ⊔ 𝓤)
-lift-is-DPart A = record { 𝓓 = 𝓓 , bot , bot-leq ; η = incl }
+ -- FIXME: We cannot prove directed completeness, as we used the wrong notion
+ -- of being directed.
+Lift-as-DCPO : (A : 𝓤 ̇ ) → DCPO
+Lift-as-DCPO A = A ⊥ , Leq A , pa , {!   !}
  where
   pa : PosetAxioms.poset-axioms (Leq A)
   pa = ⊥-is-set , Leq-is-prop-valued , Leq-refl , Leq-trans , Leq-anti-sym
 
-  -- FIXME: We cannot prove directed completeness, as we used the wrong notion
-  -- of being directed.
-  𝓓 : DCPO
-  𝓓 = A ⊥ , Leq A , pa , {!   !}
+Lift-as-DPart : (A : 𝓤 ̇ ) → DPartOb A (𝓥 ⁺ ⊔ 𝓤) (𝓥 ⁺ ⊔ 𝓤)
+Lift-as-DPart A = record { 𝓓 = Lift-as-DCPO A , bot , bot-leq ; η = incl }
 
-\end{code}     
+postulate
+ -- FIXME: We want X to be able to quanitify over 𝓦 and 𝓣. However, this now
+ -- means that Lift-as-DPart A and X live in a different category, as their
+ -- universe levels don't match up.
+ --
+ -- The reason why we want different universe levels, is because the Z we define
+ -- for the induction principle, lives in a differnt universe from A⊥.
+ --
+ -- The elim principle of A⊥, should be thay A⊥ is the initial DPart algebra,
+ -- so I'm afraid that this postulate is incorrect.
+ --
+ -- However, this is also what they do in [1], see
+ -- https://www.cse.chalmers.se/~nad/publications/altenkirch-danielsson-kraus-partiality/Partiality-algebra.Eliminators.html#3936
+ ⊥-elim : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣)
+        → is-singleton (DPartHom (Lift-as-DPart A) X)
+
+⊥-induction : {A : 𝓤 ̇ } {P : A ⊥ → 𝓦 ̇ }
+            → ((x : A ⊥) → is-prop (P x))
+            → P bot
+            → ((a : A) → P (incl a))
+            → ({I : 𝓥 ̇ } (α : I → A ⊥) (p : wrong-is-directed (Leq A) α)
+              → ((i : I) → P (α i))
+              → P (lub (α , p)))
+            → (x : A ⊥) → P x
+⊥-induction {𝓤} {𝓦} {A} {P} P-prop-valued P-bot P-incl P-lub x =
+ transport P
+  (happly pr₁∘f x)
+  (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ f ⟩ x))
+ where
+  Z : DPartOb A (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦) (𝓥 ⁺ ⊔ 𝓤)
+  Z = record
+   { 𝓓 = 𝓓 , (bot , P-bot) , λ (y , p) → bot-leq y
+   ; η = λ a → incl a , P-incl a }
+   where
+    𝓓 : DCPO
+    𝓓 = (Σ x ꞉ A ⊥ , P x) ,
+        (λ (x₁ , _) (x₂ , _) → x₁ ⊑[ A ] x₂) ,
+        (subsets-of-sets-are-sets (A ⊥) P ⊥-is-set (P-prop-valued _) ,
+         (λ (x₁ , _) (x₂ , _) →  Leq-is-prop-valued x₁ x₂) ,
+         (λ (x , _) → Leq-refl x) ,
+         (λ (x₁ , _) (x₂ , _) (x₃ , _) → Leq-trans x₁ x₂ x₃) ,
+         (λ (x₁ , _) (x₂ , _) x₁⊑x₂ x₂⊑x₁ → to-subtype-＝ P-prop-valued (Leq-anti-sym x₁ x₂ x₁⊑x₂ x₂⊑x₁))) ,
+        λ I α δ →
+         -- FIXME: We cannot prove these, as we used wrong-is-directed
+         (lub (pr₁ ∘ α , {!   !}) , P-lub (pr₁ ∘ α) {!   !} (pr₂ ∘ α)) ,
+         lub-upperbound {!   !} ,
+         λ v → lub-lowest {!   !} (pr₁ v)
+
+  module Z = DPartOb Z
+
+  pr₁-as-DPartHom : DPartHom Z (Lift-as-DPart A)
+  pr₁-as-DPartHom = record { f = pr₁ , pr₁-continious ; f-strict = refl ; f-η = refl }
+   where
+    -- FIXME: We cannot prove these, as we used wrong-is-directed
+    pr₁-continious : is-continuous (Z.𝓓 ⁻) (Lift-as-DCPO A) pr₁
+    pr₁-continious I α δ = lub-upperbound {!   !} , lub-lowest {!   !}
+
+  f : DPartHom (Lift-as-DPart A) Z
+  f = center (⊥-elim Z)
+
+  pr₁∘f : pr₁ ∘ DPart[ Lift-as-DPart A , Z ]⟨ f ⟩ ＝ id
+  pr₁∘f = ap (DPart[ Lift-as-DPart A , Lift-as-DPart A ]⟨_⟩) γ
+   where
+    γ : DPartComp _ _ _ f pr₁-as-DPartHom ＝ DPartId (Lift-as-DPart A)
+    γ = singletons-are-props (⊥-elim (Lift-as-DPart A))
+            (DPartComp _ _ _ f pr₁-as-DPartHom)
+            (DPartId (Lift-as-DPart A))
+
+\end{code}
