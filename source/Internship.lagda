@@ -268,9 +268,18 @@ We use this to prove that DPartHom is a set.
     where
      module f = DPartHom f
 
-   -- FIXME: Simplifying this expression takes pretty long
    ψϕ : ψ ∘ ϕ ∼ id
-   ψϕ f = {!   !}
+   ψϕ (f , f⊑ , f⊥ , fη , f∐) =
+    to-subtype-＝
+     (λ f →
+       Σ-is-prop
+        (Π₃-is-prop fe (λ x₁ x₂ x₁⊑x₂ → prop-valuedness (Y.𝓓 ⁻) (f x₁) (f x₂)))
+        (λ f⊑ →
+          ×₃-is-prop
+           (sethood (Y.𝓓 ⁻))
+           (Π-is-set fe (λ a → sethood (Y.𝓓 ⁻)))
+           (Π-is-prop' fe (λ I → Π₂-is-prop fe (λ α p → sethood (Y.𝓓 ⁻))))))
+     refl
 
  DPartHom'-is-set : (X : DPartOb' A 𝓦₁ 𝓣₁) (H : DPartOb' A 𝓦₂ 𝓣₂)
                   → is-set (DPartHom' X H)
