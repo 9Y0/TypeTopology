@@ -56,6 +56,7 @@ record DPartOb
   𝓓 : DCPO⊥ {𝓦} {𝓣}
   η : A → ⟪ 𝓓 ⟫
 
+-- FIXME: Use an equivalence of types instead
 DPartOb＝ : {A : 𝓤 ̇ } {X Y : DPartOb A 𝓦 𝓣}
           → let module X = DPartOb X
                 module Y = DPartOb Y
@@ -143,14 +144,19 @@ module _ {𝓤 : Universe} {A : 𝓤 ̇ }
          {𝓦₁ 𝓦₂ 𝓣₁ 𝓣₂ : Universe}
         where
 
+ -- FIXME: Perhaps not use a record here...
  record DPartHom (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
         : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦₁ ⊔ 𝓦₂ ⊔ 𝓣₁ ⊔ 𝓣₂ ̇  where
+  constructor make-DPartHom
+ 
   module X = DPartOb X
   module Y = DPartOb Y
 
   field
    f : DCPO⊥[ X.𝓓 , Y.𝓓 ]
+--    FIXME: Use is-strict here
    f-strict : [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ (least X.𝓓) ＝ least Y.𝓓
+--    FIXME: Perhaps require a homotopy, as we already have fun-ext
    f-η : [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ ∘ X.η ＝ Y.η
 
  DPart[_,_]⟨_⟩ : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
@@ -177,7 +183,7 @@ module _ {𝓤 : Universe} {A : 𝓤 ̇ }
  DPartHom＝ : {X : DPartOb A 𝓦₁ 𝓣₁} {Y : DPartOb A 𝓦₂ 𝓣₂} {f g : DPartHom X Y}
             → DPart[ X , Y ]⟨ f ⟩ ＝ DPart[ X , Y ]⟨ g ⟩
             → f ＝ g
- DPartHom＝ {X} {Y} {f} {g} refl = γ p q r
+ DPartHom＝ {X} {Y} {f} {g} refl = {! apd  !}
   where
    module X = DPartOb X
    module Y = DPartOb Y
@@ -419,6 +425,7 @@ postulate
  ⊥-elim : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣)
         → is-singleton (DPartHom (Lift-as-DPart A) X)
 
+-- Is prop valued hier nodig?
 ⊥-induction : {A : 𝓤 ̇ } {P : A ⊥ → 𝓦 ̇ }
             → ((x : A ⊥) → is-prop (P x))
             → P bot
