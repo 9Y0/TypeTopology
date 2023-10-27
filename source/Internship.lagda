@@ -22,6 +22,7 @@ open import UF.Subsingletons-FunExt
 open import UF.Subsingletons-Properties
 
 open import UF.Equiv
+open import UF.EquivalenceExamples
 
 module Internship
         (pt : propositional-truncations-exist)
@@ -328,55 +329,127 @@ DPartPre A 𝓦 𝓣 =
 
 \end{code}
 
+Because ∥_∥ has no actual definition, but is rather assumed to exist (see UF.PropTrunc),
+it results in Agda not being able to verify that the QIIT we'll define later is
+strictly positive. For this reason, we define a new type ∥_∥', which will allow
+Agda to verify that the QIIT is strictly positive.
+
+\begin{code}
+
+module _ where
+ data ∥_∥' {𝓤 : Universe} (X : 𝓤 ̇ ) : 𝓤 ̇  where
+  ∣_∣' : X → ∥ X ∥'
+
+ infix 0 ∥_∥'
+ infix 0 ∣_∣'
+
+ postulate
+  ∥∥'-is-prop : {𝓤 : Universe} {X : 𝓤 ̇ } → is-prop ∥ X ∥'
+  ∥∥'-rec : {𝓤 𝓥 : Universe} {X : 𝓤 ̇ } {P : 𝓥 ̇ } → is-prop P → (X → P) → ∥ X ∥' → P
+
+ ∥∥'-induction : {𝓤 𝓥 : Universe} {X : 𝓤 ̇ } {P : ∥ X ∥' → 𝓥 ̇ }
+               → ((s : ∥ X ∥') → is-prop (P s))
+               → ((x : X) → P ∣ x ∣')
+               → (s : ∥ X ∥') → P s
+ ∥∥'-induction {𝓤} {𝓥} {X} {P} i f s = φ' s
+  where
+   φ : X → P s
+   φ x = transport P (∥∥'-is-prop ∣ x ∣' s) (f x)
+
+   φ' : ∥ X ∥' → P s
+   φ' = ∥∥'-rec (i s) φ
+
+ ∥∥≃∥∥' : {𝓤 : Universe} (X : 𝓤 ̇ ) → ∥ X ∥ ≃ ∥ X ∥'
+ ∥∥≃∥∥' X = qinveq f (g , gf , fg)
+  where
+   f : ∥ X ∥ → ∥ X ∥'
+   f = ∥∥-rec ∥∥'-is-prop ∣_∣'
+
+   g : ∥ X ∥' → ∥ X ∥
+   g = ∥∥'-rec ∥∥-is-prop ∣_∣
+
+   gf : g ∘ f ∼ id
+   gf = ∥∥-induction (λ _ → props-are-sets ∥∥-is-prop) (λ _ → ∥∥-is-prop _ _)
+
+   fg : f ∘ g ∼ id
+   fg = ∥∥'-induction (λ _ → props-are-sets ∥∥'-is-prop) (λ _ → ∥∥'-is-prop _ _)
+
+\end{code}
+
 We now consider the QIIT from [1] adapted to a DCPO setting.
 
 \begin{code}
 
+-- We now define is-directed' in terms of ∥_∥', in order to let Agda type check 
+-- the QIIT
+is-directed' : {I : 𝓥 ̇ } {X : 𝓦' ̇ } (_⊑_ : X → X → 𝓣 ̇ ) → (I → X) → 𝓥 ⊔ 𝓣 ̇
+is-directed' {I = I} _⊑_ α =
+ ∥ I ∥ ×
+ ((i j : I) → ∥ Σ k ꞉ I , (α i ⊑ α k) × (α j ⊑ α k) ∥')
+
+is-directed≃is-directed' : {I : 𝓥 ̇ } {X : 𝓦' ̇ }
+                           (_⊑_ : X → X → 𝓣 ̇ ) (α : I → X)
+                         → is-directed _⊑_ α ≃ is-directed' _⊑_ α
+is-directed≃is-directed' {I = I} _⊑_ α =
+ ×-cong
+  (≃-refl _)
+  (Π-cong fe fe (λ i → Π-cong fe fe (λ j →
+    ∥∥≃∥∥' (Σ k ꞉ I , (α i ⊑ α k) × (α j ⊑ α k)))))
+
 data _⊥ (A : 𝓤 ̇ ) : 𝓥 ⁺ ⊔ 𝓤 ̇
 data Leq (A : 𝓤 ̇ ) : A ⊥ → A ⊥ → 𝓥 ⁺ ⊔ 𝓤 ̇ 
 
--- This definition gives a specified index k s.t. αᵢ ⊑ αₖ, αⱼ ⊑ αₖ instead of an
--- unspecified index k. Using this definition Leq A , A ⊥ become strictly
--- positive, but it's definitly not the definition we want.
-wrong-is-directed : {I : 𝓥 ̇ } {X : 𝓦' ̇ } → (_⊑_ : X → X → 𝓣 ̇ ) → (I → X) → 𝓥 ⊔ 𝓣 ̇
-wrong-is-directed {I = I} _⊑_ α =
- ∥ I ∥ ×
- ((i j : I) → Σ k ꞉ I , (α i ⊑ α k) × (α j ⊑ α k))
+syntax Leq A x y = x ⊑[ A ] y 
 
 data _⊥ A where
  incl : A → A ⊥
- bot : A ⊥
- lub : {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , wrong-is-directed (Leq A) α) → A ⊥
+ bot  : A ⊥
+ lub' : {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed' (Leq A) α) → A ⊥
 
 postulate
  ⊥-is-set : {A : 𝓤 ̇ } → is-set (A ⊥)
 
 data Leq A where
- Leq-refl : (x : A ⊥) → Leq A x x
- Leq-trans : (x y z : A ⊥) → Leq A x y → Leq A y z → Leq A x z
- bot-leq : (x : A ⊥) → Leq A bot x
- -- FIXME: If we figure out what to do with wrong-is-directed, it would be
- --        better to replace these two constructors with a single is-sup constr
- lub-upperbound : {I : 𝓥 ̇ } {α : I → A ⊥} (p : wrong-is-directed (Leq A) α)
-                  (i : I) → Leq A (α i) (lub (α , p))
- lub-lowest : {I : 𝓥 ̇ } {α : I → A ⊥} (p : wrong-is-directed (Leq A) α) (v : A ⊥)
-            → ((i : I) → Leq A (α i) v)
-            → Leq A (lub (α , p)) v
+ Leq-refl : (x : A ⊥) → x ⊑[ A ] x
+ Leq-trans : (x y z : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] z → x ⊑[ A ] z
+ bot-leq : (x : A ⊥) → bot ⊑[ A ] x
+ lub-is-upperbound' : {I : 𝓥 ̇ } {α : I → A ⊥} (p : is-directed' (Leq A) α)
+                      (i : I) → α i ⊑[ A ] lub' (α , p)
+ lub-is-lowerbound-of-upperbounds' : {I : 𝓥 ̇ } {α : I → A ⊥}
+                                     (p : is-directed' (Leq A) α) (v : A ⊥)
+                                   → ((i : I) → α i ⊑[ A ] v)
+                                   → lub' (α , p) ⊑[ A ] v
 
--- FIXME: This is very close to the x ⊑⟨ 𝓓 ⟩ y syntax of DCPOs, probably not a good idea...
-syntax Leq A x y = x ⊑[ A ] y            
+lub : {A : 𝓤 ̇ } {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed (Leq A) α) → A ⊥
+lub {A = A} (α , p) = lub' (α , ⌜ is-directed≃is-directed' (Leq A) α ⌝ p)
+
+lub-is-upperbound : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (p : is-directed (Leq A) α)
+                  → is-upperbound (Leq A) (lub (α , p)) α
+lub-is-upperbound {A = A} {α = α} p =
+ lub-is-upperbound' (⌜ is-directed≃is-directed' (Leq A) α ⌝ p)
+
+lub-is-lowerbound-of-upperbounds : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥}
+                                   (p : is-directed (Leq A) α)
+                                 → is-lowerbound-of-upperbounds (Leq A) (lub (α , p)) α
+lub-is-lowerbound-of-upperbounds {A = A} {α = α} p =
+ lub-is-lowerbound-of-upperbounds' (⌜ is-directed≃is-directed' (Leq A) α ⌝ p)
+
+lub-is-sup : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (p : is-directed (Leq A) α)
+           → is-sup (Leq A) (lub (α , p)) α
+lub-is-sup p = lub-is-upperbound p , lub-is-lowerbound-of-upperbounds p     
 
 postulate
  Leq-is-prop-valued : {A : 𝓤 ̇ } (x y : A ⊥) → is-prop (x ⊑[ A ] y)
  Leq-anti-sym : {A : 𝓤 ̇ } (x y : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] x → x ＝ y
 
- -- FIXME: We cannot prove directed completeness, as we used the wrong notion
- -- of being directed.
 Lift-as-DCPO : (A : 𝓤 ̇ ) → DCPO
-Lift-as-DCPO A = A ⊥ , Leq A , pa , {!   !}
+Lift-as-DCPO A = A ⊥ , Leq A , pa , γ
  where
   pa : PosetAxioms.poset-axioms (Leq A)
   pa = ⊥-is-set , Leq-is-prop-valued , Leq-refl , Leq-trans , Leq-anti-sym
+
+  γ : is-directed-complete (Leq A)
+  γ I α δ = (lub (α , δ)) , lub-is-sup δ
 
 Lift-as-DPart : (A : 𝓤 ̇ ) → DPartOb A (𝓥 ⁺ ⊔ 𝓤) (𝓥 ⁺ ⊔ 𝓤)
 Lift-as-DPart A = record { 𝓓 = Lift-as-DCPO A , bot , bot-leq ; η = incl }
@@ -397,12 +470,13 @@ postulate
  ⊥-elim : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣)
         → is-singleton (DPartHom (Lift-as-DPart A) X)
 
--- Is prop valued hier nodig?
+-- We actually need P to be prop-valued here, as otherwise we cannot prove that
+-- antisymmetry holds in the DCPO Z
 ⊥-induction : {A : 𝓤 ̇ } {P : A ⊥ → 𝓦 ̇ }
             → ((x : A ⊥) → is-prop (P x))
             → P bot
             → ((a : A) → P (incl a))
-            → ({I : 𝓥 ̇ } (α : I → A ⊥) (p : wrong-is-directed (Leq A) α)
+            → ({I : 𝓥 ̇ } (α : I → A ⊥) (p : is-directed (Leq A) α)
               → ((i : I) → P (α i))
               → P (lub (α , p)))
             → (x : A ⊥) → P x
@@ -425,19 +499,17 @@ postulate
          (λ (x₁ , _) (x₂ , _) (x₃ , _) → Leq-trans x₁ x₂ x₃) ,
          (λ (x₁ , _) (x₂ , _) x₁⊑x₂ x₂⊑x₁ → to-subtype-＝ P-prop-valued (Leq-anti-sym x₁ x₂ x₁⊑x₂ x₂⊑x₁))) ,
         λ I α δ →
-         -- FIXME: We cannot prove these, as we used wrong-is-directed
-         (lub (pr₁ ∘ α , {!   !}) , P-lub (pr₁ ∘ α) {!   !} (pr₂ ∘ α)) ,
-         lub-upperbound {!   !} ,
-         λ v → lub-lowest {!   !} (pr₁ v)
+         (lub (pr₁ ∘ α , δ) , P-lub (pr₁ ∘ α) δ (pr₂ ∘ α)) ,
+         lub-is-upperbound δ ,
+         λ v → lub-is-lowerbound-of-upperbounds δ (pr₁ v)
 
   module Z = DPartOb Z
 
   pr₁-as-DPartHom : DPartHom Z (Lift-as-DPart A)
   pr₁-as-DPartHom = (pr₁ , pr₁-continious) , refl , λ _ → refl
    where
-    -- FIXME: We cannot prove these, as we used wrong-is-directed
     pr₁-continious : is-continuous (Z.𝓓 ⁻) (Lift-as-DCPO A) pr₁
-    pr₁-continious I α δ = lub-upperbound {!   !} , lub-lowest {!   !}
+    pr₁-continious I α δ = lub-is-sup δ
 
   f : DPartHom (Lift-as-DPart A) Z
   f = center (⊥-elim Z)
