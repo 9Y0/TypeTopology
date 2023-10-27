@@ -144,75 +144,86 @@ module _ {𝓤 : Universe} {A : 𝓤 ̇ }
          {𝓦₁ 𝓦₂ 𝓣₁ 𝓣₂ : Universe}
         where
 
- -- FIXME: Perhaps not use a record here...
- record DPartHom (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
-        : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦₁ ⊔ 𝓦₂ ⊔ 𝓣₁ ⊔ 𝓣₂ ̇  where
-  constructor make-DPartHom
- 
-  module X = DPartOb X
-  module Y = DPartOb Y
-
-  field
-   f : DCPO⊥[ X.𝓓 , Y.𝓓 ]
---    FIXME: Use is-strict here
-   f-strict : [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ (least X.𝓓) ＝ least Y.𝓓
---    FIXME: Perhaps require a homotopy, as we already have fun-ext
-   f-η : [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ ∘ X.η ＝ Y.η
+ DPartHom : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+          →  𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦₁ ⊔ 𝓦₂ ⊔ 𝓣₁ ⊔ 𝓣₂ ̇
+ DPartHom X Y =
+  Σ f ꞉ DCPO⊥[ X.𝓓 , Y.𝓓 ] ,
+   is-strict X.𝓓 Y.𝓓 [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ ×
+   [ X.𝓓 ⁻ , Y.𝓓 ⁻ ]⟨ f ⟩ ∘ X.η ∼ Y.η
+  where
+   module X = DPartOb X
+   module Y = DPartOb Y
 
  DPart[_,_]⟨_⟩ : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
                → let module X = DPartOb X
                      module Y = DPartOb Y
               in (f : DPartHom X Y) → ⟪ X.𝓓 ⟫ → ⟪ Y.𝓓 ⟫
- DPart[ X , Y ]⟨ f ⟩ = pr₁ f.f
+ DPart[ X , Y ]⟨ f , _ , _ ⟩ = underlying-function (X.𝓓 ⁻) (Y.𝓓 ⁻) f
   where
    module X = DPartOb X
    module Y = DPartOb Y
-   module f = DPartHom f
 
  continuity-of-DPartHom : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
                           (f : DPartHom X Y)
                         → let module X = DPartOb X
                               module Y = DPartOb Y
                        in is-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) DPart[ X , Y ]⟨ f ⟩
- continuity-of-DPartHom X Y f = continuity-of-function (X.𝓓 ⁻) (Y.𝓓 ⁻) f.f
+ continuity-of-DPartHom X Y (f , _ , _) = continuity-of-function (X.𝓓 ⁻) (Y.𝓓 ⁻) f
   where
    module X = DPartOb X
    module Y = DPartOb Y
-   module f = DPartHom f
+
+ underlying-scott-continuous-map : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                                   (f : DPartHom X Y)
+                                 → let module X = DPartOb X
+                                       module Y = DPartOb Y
+                                in DCPO⊥[ X.𝓓 , Y.𝓓 ]
+ underlying-scott-continuous-map X Y (f , _ , _) = f
+
+ strictness : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+              (f : DPartHom X Y)
+            → let module X = DPartOb X
+                  module Y = DPartOb Y
+           in is-strict X.𝓓 Y.𝓓 DPart[ X , Y ]⟨ f ⟩
+ strictness X Y (_ , s , _) = s
+
+ η-preservation : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                  (f : DPartHom X Y)
+                → let module X = DPartOb X
+                      module Y = DPartOb Y
+               in DPart[ X , Y ]⟨ f ⟩ ∘ X.η ∼ Y.η
+ η-preservation X Y (_ , _ , h) = h
 
  DPartHom＝ : {X : DPartOb A 𝓦₁ 𝓣₁} {Y : DPartOb A 𝓦₂ 𝓣₂} {f g : DPartHom X Y}
             → DPart[ X , Y ]⟨ f ⟩ ＝ DPart[ X , Y ]⟨ g ⟩
             → f ＝ g
- DPartHom＝ {X} {Y} {f} {g} refl = {! apd  !}
+ DPartHom＝ {X} {Y} {f} {g} p =
+  to-subtype-＝
+   (λ f →
+     ×-is-prop
+      (being-strict-is-prop X.𝓓 Y.𝓓 (underlying-function (X.𝓓 ⁻) (Y.𝓓 ⁻) f))
+      (Π-is-prop fe λ _ → sethood (Y.𝓓 ⁻)))
+   (to-subtype-＝ (being-continuous-is-prop (X.𝓓 ⁻) (Y.𝓓 ⁻)) p)
   where
    module X = DPartOb X
    module Y = DPartOb Y
-   module f = DPartHom f
-   module g = DPartHom g
 
-   p : f.f ＝ g.f
-   p = to-Σ-＝
-        (refl ,
-         being-continuous-is-prop (X.𝓓 ⁻) (Y.𝓓 ⁻)
-          (DPart[ X , Y ]⟨ f ⟩) _ _)
-
-   q : f.f-strict ＝ g.f-strict
-   q = sethood (Y.𝓓 ⁻) _ _
-
-   r : f.f-η ＝ g.f-η
-   r = Π-is-set fe (λ _ → sethood (Y.𝓓 ⁻)) _ _
-
-   -- FIXME: Cannot match p as refl fsr
-   γ : f.f ＝ g.f
-     → f.f-strict ＝ g.f-strict
-     → f.f-η ＝ g.f-η
-     → _ ＝ _
-   γ p refl refl = {! p !}
+ DPartHom-is-set : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                 → is-set (DPartHom X Y)
+ DPartHom-is-set X Y =
+  Σ-is-set
+   (Σ-is-set
+    (Π-is-set fe (λ _ → sethood (Y.𝓓 ⁻)))
+    (λ f → props-are-sets (being-continuous-is-prop (X.𝓓 ⁻) (Y.𝓓 ⁻) f)))
+   λ f → props-are-sets (×-is-prop (being-strict-is-prop X.𝓓 Y.𝓓 (pr₁ f))
+                                   (Π-is-prop fe (λ _ → sethood (Y.𝓓 ⁻))))
+  where
+   module X = DPartOb X
+   module Y = DPartOb Y
 
 \end{code}
 
 DPartHom is equivalent to the Sigma type corresponding to the one given in [1].
-We use this to prove that DPartHom is a set.
 
 \begin{code}
 
@@ -246,33 +257,26 @@ We use this to prove that DPartHom is a set.
 
    ψ : DPartHom X Y → DPartHom' (⌜ DPartOb≃DPartOb' ⌝ X) (⌜ DPartOb≃DPartOb' ⌝ Y)
    ψ f = DPart[ X , Y ]⟨ f ⟩ ,
-         monotone-if-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) f.f ,
-         f.f-strict ,
-         f.f-η ,
+         monotone-if-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) ,
+         strictness X Y f ,
+         dfunext fe (η-preservation X Y f) ,
          γ
     where
-     module f = DPartHom f
-    
      γ : {I : 𝓥 ̇ } (α : I → ⟪ X.𝓓 ⟫) (p : is-Directed (X.𝓓 ⁻) α)
        → DPart[ X , Y ]⟨ f ⟩ (∐ (X.𝓓 ⁻) p)
-       ＝ ∐ (Y.𝓓 ⁻) (image-is-directed' (X.𝓓 ⁻) (Y.𝓓 ⁻) f.f p)
-     γ α p = continuous-∐-＝ (X.𝓓 ⁻) (Y.𝓓 ⁻) f.f p
+       ＝ ∐ (Y.𝓓 ⁻) (image-is-directed' (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) p)
+     γ α p = continuous-∐-＝ (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) p
 
    ϕ : DPartHom' (⌜ DPartOb≃DPartOb' ⌝ X) (⌜ DPartOb≃DPartOb' ⌝ Y) → DPartHom X Y
-   ϕ (f , f⊑ , f⊥ , fη , f∐) =
-    record
-     { f = f ,
-           λ I α δ →
-            transport⁻¹ (λ y → is-sup (underlying-order⊥ Y.𝓓) y (f ∘ α))
-             (f∐ α δ)
-             (∐-is-sup (Y.𝓓 ⁻) _)
-     ; f-strict = f⊥
-     ; f-η = fη }
+   ϕ (f , f⊑ , f⊥ , fη , f∐) = (f , γ) , f⊥ , happly fη
+    where
+     γ : is-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) f
+     γ I α δ = transport⁻¹ (λ y → is-sup (underlying-order⊥ Y.𝓓) y (f ∘ α))
+                (f∐ α δ)
+                (∐-is-sup (Y.𝓓 ⁻) _)
 
    ϕψ : ϕ ∘ ψ ∼ id
-   ϕψ f = DPartHom＝ refl
-    where
-     module f = DPartHom f
+   ϕψ f = DPartHom＝ {X} {Y} refl
 
    ψϕ : ψ ∘ ϕ ∼ id
    ψϕ (f , f⊑ , f⊥ , fη , f∐) =
@@ -280,66 +284,34 @@ We use this to prove that DPartHom is a set.
      (λ f →
        Σ-is-prop
         (Π₃-is-prop fe (λ x₁ x₂ x₁⊑x₂ → prop-valuedness (Y.𝓓 ⁻) (f x₁) (f x₂)))
-        (λ f⊑ →
-          ×₃-is-prop
-           (sethood (Y.𝓓 ⁻))
-           (Π-is-set fe (λ a → sethood (Y.𝓓 ⁻)))
-           (Π-is-prop' fe (λ I → Π₂-is-prop fe (λ α p → sethood (Y.𝓓 ⁻))))))
+        λ f⊑ →
+         ×₃-is-prop
+          (sethood (Y.𝓓 ⁻))
+          (Π-is-set fe (λ a → sethood (Y.𝓓 ⁻)))
+          (Π-is-prop' fe (λ I → Π₂-is-prop fe (λ α p → sethood (Y.𝓓 ⁻)))))
      refl
-
- DPartHom'-is-set : (X : DPartOb' A 𝓦₁ 𝓣₁) (H : DPartOb' A 𝓦₂ 𝓣₂)
-                  → is-set (DPartHom' X H)
- DPartHom'-is-set (X , _⊑ₓ_ , ⊥ₓ , ηₓ , ∐ₓ , paₓ , ⊥ₓ-is-least , ∐ₓ-is-sup)
-                  (H , _⊑ₕ_ , ⊥ₕ , ηₕ , ∐ₕ , paₕ , ⊥ₕ-is-least , ∐ₕ-is-sup) =
-  Σ-is-set
-   (Π-is-set fe (λ _ → H-is-set))
-   λ f →
-    props-are-sets
-     (Σ-is-prop
-      (Π₃-is-prop fe (λ x₁ x₂ x₁⊑x₂ → pr₁ (pr₂ paₕ) (f x₁) (f x₂)))
-      λ f⊑ →
-       ×₃-is-prop
-        H-is-set
-        (Π-is-set fe (λ _ → H-is-set))
-        (Π-is-prop' fe (λ _ → Π₂-is-prop fe (λ _ _ → H-is-set))))
-  where
-   H-is-set : is-set H
-   H-is-set = pr₁ paₕ
-
-   ⊑ₕ-prop-valued : PosetAxioms.is-prop-valued _⊑ₕ_
-   ⊑ₕ-prop-valued = pr₁ (pr₂ paₕ)
-
- DPartHom-is-set : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
-                 → is-set (DPartHom X Y)
- DPartHom-is-set X Y =
-  equiv-to-set
-   (DPartHom≃DPartHom' X Y)
-   (DPartHom'-is-set (⌜ DPartOb≃DPartOb' ⌝ X) (⌜ DPartOb≃DPartOb' ⌝ Y))
 
 \end{code}
 
 \begin{code}
 
 DPartId : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣) → DPartHom X X
-DPartId X =
- record
-  { f = id , λ I α → ∐-is-sup (𝓓 ⁻)
-  ; f-strict = refl
-  ; f-η = refl }
+DPartId X = (id , id-is-continuous (X.𝓓 ⁻)) ,
+            refl ,
+            λ _ → refl
  where
-  open DPartOb X
+  module X = DPartOb X
 
 DPartComp : {A : 𝓤 ̇ } {𝓦₁ 𝓦₂ 𝓦₃ 𝓣₁ 𝓣₂ 𝓣₃ : Universe}
             (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂) (Z : DPartOb A 𝓦₃ 𝓣₃)
           → DPartHom X Y → DPartHom Y Z → DPartHom X Z
 DPartComp X Y Z f g =
- record
-  { f = DCPO-∘ (X.𝓓 ⁻) (Y.𝓓 ⁻) (Z.𝓓 ⁻) f.f g.f
-  ; f-strict = ap DPart[ Y , Z ]⟨ g ⟩ f.f-strict ∙ g.f-strict
-  ; f-η = ap (DPart[ Y , Z ]⟨ g ⟩ ∘_) f.f-η ∙ g.f-η }
+ DCPO-∘ (X.𝓓 ⁻) (Y.𝓓 ⁻) (Z.𝓓 ⁻)
+  (underlying-scott-continuous-map X Y f)
+  (underlying-scott-continuous-map Y Z g) ,
+ (ap DPart[ Y , Z ]⟨ g ⟩ (strictness X Y f) ∙ strictness Y Z g) ,
+ λ a → ap DPart[ Y , Z ]⟨ g ⟩ (η-preservation X Y f a) ∙ η-preservation Y Z g a
  where
-  module f = DPartHom f
-  module g = DPartHom g
   module X = DPartOb X
   module Y = DPartOb Y
   module Z = DPartOb Z
@@ -350,9 +322,9 @@ DPartPre A 𝓦 𝓣 =
  make
   (DPartOb A 𝓦 𝓣 , DPartHom , DPartId , DPartComp)
   (DPartHom-is-set ,
-   (λ X Y f → DPartHom＝ refl) ,
-   (λ X Y f → DPartHom＝ refl) ,
-   λ X Y Z W f g h → DPartHom＝ refl)
+   (λ X Y f → DPartHom＝ {X = X} {Y} refl) ,
+   (λ X Y f → DPartHom＝ {X = X} {Y} refl) ,
+   λ X Y Z W f g h → DPartHom＝ {X = X} {W} refl)
 
 \end{code}
 
@@ -461,7 +433,7 @@ postulate
   module Z = DPartOb Z
 
   pr₁-as-DPartHom : DPartHom Z (Lift-as-DPart A)
-  pr₁-as-DPartHom = record { f = pr₁ , pr₁-continious ; f-strict = refl ; f-η = refl }
+  pr₁-as-DPartHom = (pr₁ , pr₁-continious) , refl , λ _ → refl
    where
     -- FIXME: We cannot prove these, as we used wrong-is-directed
     pr₁-continious : is-continuous (Z.𝓓 ⁻) (Lift-as-DCPO A) pr₁
@@ -473,9 +445,9 @@ postulate
   pr₁∘f : pr₁ ∘ DPart[ Lift-as-DPart A , Z ]⟨ f ⟩ ＝ id
   pr₁∘f = ap (DPart[ Lift-as-DPart A , Lift-as-DPart A ]⟨_⟩) γ
    where
-    γ : DPartComp _ _ _ f pr₁-as-DPartHom ＝ DPartId (Lift-as-DPart A)
-    γ = singletons-are-props (⊥-elim (Lift-as-DPart A))
-            (DPartComp _ _ _ f pr₁-as-DPartHom)
-            (DPartId (Lift-as-DPart A))
+    γ : DPartComp (Lift-as-DPart A) Z (Lift-as-DPart A) f pr₁-as-DPartHom
+     ＝ DPartId (Lift-as-DPart A)
+    γ = singletons-are-props (⊥-elim (Lift-as-DPart A)) _ _
 
 \end{code}
+ 
