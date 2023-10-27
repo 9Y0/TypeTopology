@@ -94,7 +94,7 @@ DPartAxioms : {X : 𝓦 ̇ } (_⊑_ : X → X → 𝓣 ̇ ) (⊥ : X)
 DPartAxioms {X = X} _⊑_ ⊥ ∐ =
  PosetAxioms.poset-axioms _⊑_ ×
  is-least _⊑_ ⊥ × 
- ({I : 𝓥 ̇ } {α : I → X} (p : is-directed _⊑_ α) → is-sup _⊑_ (∐ (α , p)) α)
+ ({I : 𝓥 ̇ } {α : I → X} (δ : is-directed _⊑_ α) → is-sup _⊑_ (∐ (α , δ)) α)
 
 DPartOb' : (A : 𝓤 ̇ ) (𝓦 𝓣 : Universe) → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⁺ ⊔ 𝓣 ⁺ ̇
 DPartOb' A 𝓦 𝓣 =
@@ -114,7 +114,7 @@ DPartOb≃DPartOb' {A = A} {𝓦} {𝓣} = qinveq f (g , gf , fg)
         underlying-order⊥ 𝓓 ,
         least 𝓓 ,
         η ,
-        (λ (α , p) → ∐ (𝓓 ⁻) p) ,
+        (λ (α , δ) → ∐ (𝓓 ⁻) δ) ,
         pr₁ (axioms-of-dcpo (𝓓 ⁻)) ,
         ⊥-is-least 𝓓 ,
         ∐-is-sup (𝓓 ⁻)
@@ -126,7 +126,7 @@ DPartOb≃DPartOb' {A = A} {𝓦} {𝓣} = qinveq f (g , gf , fg)
    record { 𝓓 = 𝓓 , ⊥ₓ , ⊥ₓ-is-least ; η = ηₓ }
    where
     𝓓 : DCPO {𝓦} {𝓣}
-    𝓓 = X , _⊑ₓ_ , pa , (λ I α p → ∐ₓ (α , p) , ∐ₓ-is-sup p)
+    𝓓 = X , _⊑ₓ_ , pa , (λ I α δ → ∐ₓ (α , δ) , ∐ₓ-is-sup δ)
 
   gf : g ∘ f ∼ id
   gf X = DPartOb＝ refl refl refl refl
@@ -231,13 +231,13 @@ DPartHom is equivalent to the Sigma type corresponding to the one given in [1].
  image-is-directed-if-monotone : {I : 𝓥 ̇ } {X : 𝓦₁ ̇ } {H : 𝓦₂ ̇ } {α : I → X} {f : X → H}
                                → (_⊑ₓ_ : X → X → 𝓣₁ ̇ ) (_⊑ₕ_ : H → H → 𝓣₂ ̇ )
                                → (f⊑ : (x₁ x₂ : X) → x₁ ⊑ₓ x₂ → f x₁ ⊑ₕ f x₂)
-                               → (p : is-directed _⊑ₓ_ α)
+                               → (δ : is-directed _⊑ₓ_ α)
                                → is-directed _⊑ₕ_ (f ∘ α)
- image-is-directed-if-monotone {α = α} _⊑ₓ_ _⊑ₕ_ f⊑ p =
-  inhabited-if-directed _⊑ₓ_ α p ,
+ image-is-directed-if-monotone {α = α} _⊑ₓ_ _⊑ₕ_ f⊑ δ =
+  inhabited-if-directed _⊑ₓ_ α δ ,
   λ i j → ∥∥-functor
            (λ (k , αᵢ⊑αₖ , αⱼ⊑αₖ) → k , f⊑ _ _ αᵢ⊑αₖ , f⊑ _ _ αⱼ⊑αₖ)
-           (semidirected-if-directed _⊑ₓ_ α p i j)
+           (semidirected-if-directed _⊑ₓ_ α δ i j)
 
  DPartHom' : DPartOb' A 𝓦₁ 𝓣₁  → DPartOb' A 𝓦₂ 𝓣₂ → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦₁ ⊔ 𝓦₂ ⊔ 𝓣₁ ⊔ 𝓣₂ ̇
  DPartHom' (X , _⊑ₓ_ , ⊥ₓ , ηₓ , ∐ₓ , _) (H , _⊑ₕ_ , ⊥ₕ , ηₕ , ∐ₕ , _) =
@@ -245,8 +245,8 @@ DPartHom is equivalent to the Sigma type corresponding to the one given in [1].
   Σ f⊑ ꞉ ((x₁ x₂ : X) → x₁ ⊑ₓ x₂ → f x₁ ⊑ₕ f x₂) ,
    (f ⊥ₓ ＝ ⊥ₕ) ×
    (f ∘ ηₓ ＝ ηₕ) ×
-   ({I : 𝓥 ̇ } (α : I → X) (p : is-directed _⊑ₓ_ α) →
-    f (∐ₓ (α , p)) ＝ ∐ₕ (f ∘ α , image-is-directed-if-monotone _⊑ₓ_ _⊑ₕ_ f⊑ p))
+   ({I : 𝓥 ̇ } (α : I → X) (δ : is-directed _⊑ₓ_ α) →
+    f (∐ₓ (α , δ)) ＝ ∐ₕ (f ∘ α , image-is-directed-if-monotone _⊑ₓ_ _⊑ₕ_ f⊑ δ))
 
  DPartHom≃DPartHom' : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
                     → DPartHom X Y
@@ -263,10 +263,10 @@ DPartHom is equivalent to the Sigma type corresponding to the one given in [1].
          dfunext fe (η-preservation X Y f) ,
          γ
     where
-     γ : {I : 𝓥 ̇ } (α : I → ⟪ X.𝓓 ⟫) (p : is-Directed (X.𝓓 ⁻) α)
-       → DPart[ X , Y ]⟨ f ⟩ (∐ (X.𝓓 ⁻) p)
-       ＝ ∐ (Y.𝓓 ⁻) (image-is-directed' (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) p)
-     γ α p = continuous-∐-＝ (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) p
+     γ : {I : 𝓥 ̇ } (α : I → ⟪ X.𝓓 ⟫) (δ : is-Directed (X.𝓓 ⁻) α)
+       → DPart[ X , Y ]⟨ f ⟩ (∐ (X.𝓓 ⁻) δ)
+       ＝ ∐ (Y.𝓓 ⁻) (image-is-directed' (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) δ)
+     γ α δ = continuous-∐-＝ (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f) δ
 
    ϕ : DPartHom' (⌜ DPartOb≃DPartOb' ⌝ X) (⌜ DPartOb≃DPartOb' ⌝ Y) → DPartHom X Y
    ϕ (f , f⊑ , f⊥ , fη , f∐) = (f , γ) , f⊥ , happly fη
@@ -289,7 +289,7 @@ DPartHom is equivalent to the Sigma type corresponding to the one given in [1].
          ×₃-is-prop
           (sethood (Y.𝓓 ⁻))
           (Π-is-set fe (λ a → sethood (Y.𝓓 ⁻)))
-          (Π-is-prop' fe (λ I → Π₂-is-prop fe (λ α p → sethood (Y.𝓓 ⁻)))))
+          (Π-is-prop' fe (λ I → Π₂-is-prop fe (λ α δ → sethood (Y.𝓓 ⁻)))))
      refl
 
 \end{code}
@@ -413,30 +413,30 @@ data Leq A where
  Leq-refl : (x : A ⊥) → x ⊑[ A ] x
  Leq-trans : (x y z : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] z → x ⊑[ A ] z
  bot-leq : (x : A ⊥) → bot ⊑[ A ] x
- lub-is-upperbound' : {I : 𝓥 ̇ } {α : I → A ⊥} (p : is-directed' (Leq A) α)
-                      (i : I) → α i ⊑[ A ] lub' (α , p)
+ lub-is-upperbound' : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed' (Leq A) α)
+                      (i : I) → α i ⊑[ A ] lub' (α , δ)
  lub-is-lowerbound-of-upperbounds' : {I : 𝓥 ̇ } {α : I → A ⊥}
-                                     (p : is-directed' (Leq A) α) (v : A ⊥)
+                                     (δ : is-directed' (Leq A) α) (v : A ⊥)
                                    → ((i : I) → α i ⊑[ A ] v)
-                                   → lub' (α , p) ⊑[ A ] v
+                                   → lub' (α , δ) ⊑[ A ] v
 
 lub : {A : 𝓤 ̇ } {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed (Leq A) α) → A ⊥
-lub {A = A} (α , p) = lub' (α , ⌜ is-directed≃is-directed' (Leq A) α ⌝ p)
+lub {A = A} (α , δ) = lub' (α , ⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
 
-lub-is-upperbound : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (p : is-directed (Leq A) α)
-                  → is-upperbound (Leq A) (lub (α , p)) α
-lub-is-upperbound {A = A} {α = α} p =
- lub-is-upperbound' (⌜ is-directed≃is-directed' (Leq A) α ⌝ p)
+lub-is-upperbound : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α)
+                  → is-upperbound (Leq A) (lub (α , δ)) α
+lub-is-upperbound {A = A} {α = α} δ =
+ lub-is-upperbound' (⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
 
 lub-is-lowerbound-of-upperbounds : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥}
-                                   (p : is-directed (Leq A) α)
-                                 → is-lowerbound-of-upperbounds (Leq A) (lub (α , p)) α
-lub-is-lowerbound-of-upperbounds {A = A} {α = α} p =
- lub-is-lowerbound-of-upperbounds' (⌜ is-directed≃is-directed' (Leq A) α ⌝ p)
+                                   (δ : is-directed (Leq A) α)
+                                 → is-lowerbound-of-upperbounds (Leq A) (lub (α , δ)) α
+lub-is-lowerbound-of-upperbounds {A = A} {α = α} δ =
+ lub-is-lowerbound-of-upperbounds' (⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
 
-lub-is-sup : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (p : is-directed (Leq A) α)
-           → is-sup (Leq A) (lub (α , p)) α
-lub-is-sup p = lub-is-upperbound p , lub-is-lowerbound-of-upperbounds p     
+lub-is-sup : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α)
+           → is-sup (Leq A) (lub (α , δ)) α
+lub-is-sup δ = lub-is-upperbound δ , lub-is-lowerbound-of-upperbounds δ
 
 postulate
  Leq-is-prop-valued : {A : 𝓤 ̇ } (x y : A ⊥) → is-prop (x ⊑[ A ] y)
@@ -476,9 +476,9 @@ postulate
             → ((x : A ⊥) → is-prop (P x))
             → P bot
             → ((a : A) → P (incl a))
-            → ({I : 𝓥 ̇ } (α : I → A ⊥) (p : is-directed (Leq A) α)
+            → ({I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
               → ((i : I) → P (α i))
-              → P (lub (α , p)))
+              → P (lub (α , δ)))
             → (x : A ⊥) → P x
 ⊥-induction {𝓤} {𝓦} {A} {P} P-prop-valued P-bot P-incl P-lub x =
  transport P
