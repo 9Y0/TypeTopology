@@ -329,114 +329,34 @@ DPartPre A 𝓦 𝓣 =
 
 \end{code}
 
-Because ∥_∥ has no actual definition, but is rather assumed to exist (see UF.PropTrunc),
-it results in Agda not being able to verify that the QIIT we'll define later is
-strictly positive. For this reason, we define a new type ∥_∥', which will allow
-Agda to verify that the QIIT is strictly positive.
-
-\begin{code}
-
-module _ where
- data ∥_∥' {𝓤 : Universe} (X : 𝓤 ̇ ) : 𝓤 ̇  where
-  ∣_∣' : X → ∥ X ∥'
-
- infix 0 ∥_∥'
- infix 0 ∣_∣'
-
- postulate
-  ∥∥'-is-prop : {𝓤 : Universe} {X : 𝓤 ̇ } → is-prop ∥ X ∥'
-  ∥∥'-rec : {𝓤 𝓥 : Universe} {X : 𝓤 ̇ } {P : 𝓥 ̇ } → is-prop P → (X → P) → ∥ X ∥' → P
-
- ∥∥'-induction : {𝓤 𝓥 : Universe} {X : 𝓤 ̇ } {P : ∥ X ∥' → 𝓥 ̇ }
-               → ((s : ∥ X ∥') → is-prop (P s))
-               → ((x : X) → P ∣ x ∣')
-               → (s : ∥ X ∥') → P s
- ∥∥'-induction {𝓤} {𝓥} {X} {P} i f s = φ' s
-  where
-   φ : X → P s
-   φ x = transport P (∥∥'-is-prop ∣ x ∣' s) (f x)
-
-   φ' : ∥ X ∥' → P s
-   φ' = ∥∥'-rec (i s) φ
-
- ∥∥≃∥∥' : {𝓤 : Universe} (X : 𝓤 ̇ ) → ∥ X ∥ ≃ ∥ X ∥'
- ∥∥≃∥∥' X = qinveq f (g , gf , fg)
-  where
-   f : ∥ X ∥ → ∥ X ∥'
-   f = ∥∥-rec ∥∥'-is-prop ∣_∣'
-
-   g : ∥ X ∥' → ∥ X ∥
-   g = ∥∥'-rec ∥∥-is-prop ∣_∣
-
-   gf : g ∘ f ∼ id
-   gf = ∥∥-induction (λ _ → props-are-sets ∥∥-is-prop) (λ _ → ∥∥-is-prop _ _)
-
-   fg : f ∘ g ∼ id
-   fg = ∥∥'-induction (λ _ → props-are-sets ∥∥'-is-prop) (λ _ → ∥∥'-is-prop _ _)
-
-\end{code}
-
 We now consider the QIIT from [1] adapted to a DCPO setting.
 
 \begin{code}
 
--- We now define is-directed' in terms of ∥_∥', in order to let Agda type check 
--- the QIIT
-is-directed' : {I : 𝓥 ̇ } {X : 𝓦' ̇ } (_⊑_ : X → X → 𝓣 ̇ ) → (I → X) → 𝓥 ⊔ 𝓣 ̇
-is-directed' {I = I} _⊑_ α =
- ∥ I ∥ ×
- ((i j : I) → ∥ Σ k ꞉ I , (α i ⊑ α k) × (α j ⊑ α k) ∥')
-
-is-directed≃is-directed' : {I : 𝓥 ̇ } {X : 𝓦' ̇ }
-                           (_⊑_ : X → X → 𝓣 ̇ ) (α : I → X)
-                         → is-directed _⊑_ α ≃ is-directed' _⊑_ α
-is-directed≃is-directed' {I = I} _⊑_ α =
- ×-cong
-  (≃-refl _)
-  (Π-cong fe fe (λ i → Π-cong fe fe (λ j →
-    ∥∥≃∥∥' (Σ k ꞉ I , (α i ⊑ α k) × (α j ⊑ α k)))))
-
-data _⊥ (A : 𝓤 ̇ ) : 𝓥 ⁺ ⊔ 𝓤 ̇
-data Leq (A : 𝓤 ̇ ) : A ⊥ → A ⊥ → 𝓥 ⁺ ⊔ 𝓤 ̇ 
-
-syntax Leq A x y = x ⊑[ A ] y 
-
-data _⊥ A where
- incl : A → A ⊥
- bot  : A ⊥
- lub' : {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed' (Leq A) α) → A ⊥
-
 postulate
- Leq-anti-sym : {A : 𝓤 ̇ } (x y : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] x → x ＝ y
- ⊥-is-set : {A : 𝓤 ̇ } → is-set (A ⊥)
+ _⊥ : (A : 𝓤 ̇ ) → 𝓥 ⁺ ⊔ 𝓤 ̇
+ Leq : (A : 𝓤 ̇ ) → A ⊥ → A ⊥ → 𝓥 ⁺ ⊔ 𝓤 ̇
 
-data Leq A where
- Leq-refl : (x : A ⊥) → x ⊑[ A ] x
- Leq-trans : (x y z : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] z → x ⊑[ A ] z
- bot-leq : (x : A ⊥) → bot ⊑[ A ] x
- lub-is-upperbound' : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed' (Leq A) α)
-                      (i : I) → α i ⊑[ A ] lub' (α , δ)
- lub-is-lowerbound-of-upperbounds' : {I : 𝓥 ̇ } {α : I → A ⊥}
-                                     (δ : is-directed' (Leq A) α) (v : A ⊥)
-                                   → ((i : I) → α i ⊑[ A ] v)
-                                   → lub' (α , δ) ⊑[ A ] v
+syntax Leq A x y = x ⊑[ A ] y
 
-postulate
- Leq-is-prop-valued : {A : 𝓤 ̇ } (x y : A ⊥) → is-prop (x ⊑[ A ] y)
+module _ {A : 𝓤 ̇ } where
+ postulate
+  incl         : A → A ⊥
+  bot          : A ⊥
+  lub          : {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed (Leq A) α) → A ⊥
+  Leq-anti-sym : (x y : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] x → x ＝ y
+  ⊥-is-set     : is-set (A ⊥)
 
-lub : {A : 𝓤 ̇ } {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed (Leq A) α) → A ⊥
-lub {A = A} (α , δ) = lub' (α , ⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
-
-lub-is-upperbound : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α)
-                  → is-upperbound (Leq A) (lub (α , δ)) α
-lub-is-upperbound {A = A} {α = α} δ =
- lub-is-upperbound' (⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
-
-lub-is-lowerbound-of-upperbounds : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥}
-                                   (δ : is-directed (Leq A) α)
-                                 → is-lowerbound-of-upperbounds (Leq A) (lub (α , δ)) α
-lub-is-lowerbound-of-upperbounds {A = A} {α = α} δ =
- lub-is-lowerbound-of-upperbounds' (⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
+  Leq-refl          : (x : A ⊥) → x ⊑[ A ] x
+  Leq-trans         : (x y z : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] z → x ⊑[ A ] z
+  bot-leq           : (x : A ⊥) → bot ⊑[ A ] x
+  lub-is-upperbound : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α)
+                      (i : I) → α i ⊑[ A ] lub (α , δ)
+  lub-is-lowerbound-of-upperbounds
+                    : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α) (v : A ⊥)
+                    → ((i : I) → α i ⊑[ A ] v)
+                    → lub (α , δ) ⊑[ A ] v
+  Leq-is-prop-valued : (x y : A ⊥) → is-prop (x ⊑[ A ] y)
 
 lub-is-sup : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α)
            → is-sup (Leq A) (lub (α , δ)) α
