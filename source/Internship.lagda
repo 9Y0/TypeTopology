@@ -619,7 +619,11 @@ module _ {A : 𝓤 ̇ }
    ⊥-elim-β-incl : (a : A) → ⊥-elim (incl a) ＝ P-incl a
    ⊥-elim-β-lub  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
                  → ⊥-elim (lub (α , ⊑-directed-if-Q-directed δ)) ＝ P-lub α δ
-   -- TODO: Computation rule for [Leq-antisym]
+   ⊥-elim-β-anti-sym : {x y : A ⊥} (px : P x) (py : P y)
+                     → (x⊑y : x ⊑[ A ] y) (y⊑x : y ⊑[ A ] x)
+                     → (qxy : Q px py x⊑y) (qyx : Q py px y⊑x)
+                     → apd ⊥-elim (Leq-anti-sym x y x⊑y y⊑x)
+                     ＝ Q-anti-sym (⊥-elim x) (⊥-elim y) x⊑y y⊑x (⊑-elim x⊑y) (⊑-elim y⊑x)
 
  ⊥-elim : (args : ElimArgs) → Eliminator args
  ⊥-elim args = record
@@ -628,7 +632,7 @@ module _ {A : 𝓤 ̇ }
   ; ⊥-elim-β-bot = {!   !}
   ; ⊥-elim-β-incl = {!   !}
   ; ⊥-elim-β-lub = {!   !}
-  }
+  ; ⊥-elim-β-anti-sym = {!   !} }
   where
    open ElimArgs args
 
