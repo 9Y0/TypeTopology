@@ -532,23 +532,55 @@ module _ {A : 𝓤 ̇ }
  Σ⊑-to-⊑ : {x y : Σ P} → x Σ⊑ y → pr₁ x ⊑[ A ] pr₁ y
  Σ⊑-to-⊑ = pr₁
 
- Σ⊑-directedness-to-⊑-directedness : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α)
-                                  → is-directed (Leq A) (pr₁ ∘ α)
- Σ⊑-directedness-to-⊑-directedness {α = α} δ =
+ -- FIXME: This is in general not a prop, while the name suggests it is
+ is-Q-directed : {I : 𝓥 ̇ } (α : I → A ⊥) → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓦' ̇
+ is-Q-directed {I} α =
+  ∥ I ∥ ×
+  (Σ p ꞉ ((i : I) → P (α i)),
+    is-semidirected _Σ⊑_ (λ i → α i , p i))
+
+ inhabited-if-Q-directed : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-Q-directed α) → ∥ I ∥
+ inhabited-if-Q-directed = pr₁
+
+ P-if-Q-directed : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-Q-directed α) (i : I) → P (α i)
+ P-if-Q-directed = pr₁ ∘ pr₂
+
+ semidirected-if-Q-directed : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-Q-directed α)
+                            → is-semidirected _Σ⊑_ (λ i → α i , P-if-Q-directed δ i)
+ semidirected-if-Q-directed = pr₂ ∘ pr₂
+
+ Q-directed-if-Σ⊑-directed : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α)
+                           → is-Q-directed (pr₁ ∘ α)
+ Q-directed-if-Σ⊑-directed {α = α} δ =
   inhabited-if-directed _Σ⊑_ α δ ,
-  λ i j →
-   ∥∥-functor
-    (λ (k , αᵢΣ⊑αₖ , αⱼΣ⊑αₖ) → k , Σ⊑-to-⊑ αᵢΣ⊑αₖ , Σ⊑-to-⊑ αⱼΣ⊑αₖ)
-    (semidirected-if-directed _Σ⊑_ α δ i j)
+  pr₂ ∘ α ,
+  semidirected-if-directed _Σ⊑_ α δ
+
+ ⊑-semidirected-if-Q-directed : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-Q-directed α)
+                              → is-semidirected (Leq A) α
+ ⊑-semidirected-if-Q-directed {α = α} δ i j = ∥∥-functor γ (semidirected-if-Q-directed δ i j)
+  where
+   γ : Σ (λ k → (α i , P-if-Q-directed δ i) Σ⊑ (α k , P-if-Q-directed δ k) ×
+                (α j , P-if-Q-directed δ j) Σ⊑ (α k , P-if-Q-directed δ k))
+     → Σ (λ k → α i ⊑[ A ] α k × α j ⊑[ A ] α k)
+   γ (k , iΣ⊑k , jΣ⊑k) = k , Σ⊑-to-⊑ iΣ⊑k , Σ⊑-to-⊑ jΣ⊑k
+
+ ⊑-directed-if-Q-directed : {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-Q-directed α)
+                          → is-directed (Leq A) α
+ ⊑-directed-if-Q-directed δ =
+  inhabited-if-Q-directed δ , ⊑-semidirected-if-Q-directed δ
+
+ ⊑-directed-if-Σ⊑-directed : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α)
+                           → is-directed (Leq A) (pr₁ ∘ α)
+ ⊑-directed-if-Σ⊑-directed = ⊑-directed-if-Q-directed ∘ Q-directed-if-Σ⊑-directed
 
  record ElimArgs : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓦' ̇  where
   field
    P-set-valued : (x : A ⊥) → is-set (P x)
    P-bot        : P bot
    P-incl       : (a : A) → P (incl a)
-   P-lub        : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
-                → ((i : I) → P (α i))
-                → P (lub (α , δ))
+   P-lub        : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
+                → P (lub (α , ⊑-directed-if-Q-directed δ))
 
    Q-prop-valued : {x y : A ⊥} (px : P x) (py : P y) (x⊑y : x ⊑[ A ] y)
                  → is-prop (Q px py x⊑y)
@@ -565,14 +597,16 @@ module _ {A : 𝓤 ̇ }
                  → Q py px y⊑x
                  → transport P (Leq-anti-sym x y x⊑y y⊑x) px ＝ py
    Q-bot         : {x : A ⊥} → (p : P x) → Q P-bot p (bot-leq x)
-   Q-upperbound  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
-                 → (p : (i : I) → P (α i))
-                 → (i : I) → Q (p i) (P-lub α δ p) (lub-is-upperbound δ i)
+   Q-upperbound  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
+                 → (i : I) → Q (P-if-Q-directed δ i)
+                               (P-lub α δ)
+                               (lub-is-upperbound (⊑-directed-if-Q-directed δ) i)
    Q-lowerbound-of-upperbounds
-                 : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
-                 → (p : (i : I) → P (α i))
+                 : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
                  → (v : A ⊥) (v-upper : (i : I) → α i ⊑[ A ] v) (pv : P v)
-                 → Q (P-lub α δ p) pv (lub-is-lowerbound-of-upperbounds δ v v-upper)
+                 → Q (P-lub α δ)
+                     pv
+                     (lub-is-lowerbound-of-upperbounds (⊑-directed-if-Q-directed δ) v v-upper)
 
  record Eliminator (args : ElimArgs) : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓦' ̇  where
   open ElimArgs args
@@ -583,16 +617,15 @@ module _ {A : 𝓤 ̇ }
 
    ⊥-elim-β-bot  : ⊥-elim bot ＝ P-bot
    ⊥-elim-β-incl : (a : A) → ⊥-elim (incl a) ＝ P-incl a
-   ⊥-elim-β-lub  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
-                 → (p : (i : I) → P (α i))
-                 → ⊥-elim (lub (α , δ)) ＝ P-lub α δ p
+   ⊥-elim-β-lub  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
+                 → ⊥-elim (lub (α , ⊑-directed-if-Q-directed δ)) ＝ P-lub α δ
    -- TODO: Computation rule for [Leq-antisym]
 
  ⊥-elim : (args : ElimArgs) → Eliminator args
  ⊥-elim args = record
   { ⊥-elim = f
   ; ⊑-elim = g
-  ; ⊥-elim-β-bot = β-bot
+  ; ⊥-elim-β-bot = {!   !}
   ; ⊥-elim-β-incl = {!   !}
   ; ⊥-elim-β-lub = {!   !}
   }
@@ -600,7 +633,9 @@ module _ {A : 𝓤 ̇ }
    open ElimArgs args
 
    Z : DPartOb A (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦) (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦')
-   Z = record { 𝓓 = 𝓓 , (bot , P-bot) , λ (y , py) → bot-leq y , Q-bot py
+   Z = record { 𝓓 = 𝓓 ,
+                    (bot , P-bot) ,
+                    (λ (y , py) → bot-leq y , Q-bot py)
               ; η = λ a → incl a , P-incl a }
     where
      Σ⊑-PosetAxioms : PosetAxioms.poset-axioms _Σ⊑_
@@ -613,8 +648,8 @@ module _ {A : 𝓤 ̇ }
 
      Σ-lub : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α) → Σ P
      Σ-lub {α = α} δ =
-      lub (pr₁ ∘ α , Σ⊑-directedness-to-⊑-directedness δ) ,
-      P-lub (pr₁ ∘ α) (Σ⊑-directedness-to-⊑-directedness δ) (pr₂ ∘ α)
+      lub (pr₁ ∘ α , ⊑-directed-if-Σ⊑-directed δ) ,
+      P-lub (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ)
 
      Σ⊑-directed-completeness : is-directed-complete _Σ⊑_
      Σ⊑-directed-completeness I α δ =
@@ -624,15 +659,15 @@ module _ {A : 𝓤 ̇ }
       where
        Σ-lub-is-upperbound : is-upperbound _Σ⊑_ (Σ-lub δ) α
        Σ-lub-is-upperbound i =
-        lub-is-upperbound (Σ⊑-directedness-to-⊑-directedness δ) i ,
-        Q-upperbound (pr₁ ∘ α) (Σ⊑-directedness-to-⊑-directedness δ) (pr₂ ∘ α) i
+        lub-is-upperbound (⊑-directed-if-Σ⊑-directed δ) i ,
+        Q-upperbound (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ) i
 
        Σ-lub-is-lowerbound-of-upperbounds : is-lowerbound-of-upperbounds _Σ⊑_ (Σ-lub δ) α
        Σ-lub-is-lowerbound-of-upperbounds (v , pv) v-upperbound =
-        lub-is-lowerbound-of-upperbounds (Σ⊑-directedness-to-⊑-directedness δ) v
+        lub-is-lowerbound-of-upperbounds (⊑-directed-if-Σ⊑-directed δ) v
          (λ i → Σ⊑-to-⊑ (v-upperbound i)) ,
-        Q-lowerbound-of-upperbounds (pr₁ ∘ α) (Σ⊑-directedness-to-⊑-directedness δ)
-         (pr₂ ∘ α) v (λ i → Σ⊑-to-⊑ (v-upperbound i)) pv
+        Q-lowerbound-of-upperbounds (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ)
+         v (λ i → Σ⊑-to-⊑ (v-upperbound i)) pv
 
      𝓓 : DCPO {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦} {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦'}
      𝓓 = Σ P , _Σ⊑_ , Σ⊑-PosetAxioms , Σ⊑-directed-completeness
@@ -643,7 +678,7 @@ module _ {A : 𝓤 ̇ }
    pr₁-as-DPartHom = (pr₁ , pr₁-continious) , refl , λ _ → refl
     where
      pr₁-continious : is-continuous (Z.𝓓 ⁻) (Lift-as-DCPO A) pr₁
-     pr₁-continious I α δ = lub-is-sup (Σ⊑-directedness-to-⊑-directedness δ)
+     pr₁-continious I α δ = lub-is-sup (⊑-directed-if-Σ⊑-directed δ)
 
    ! : DPartHom (Lift-as-DPart A) Z
    ! = center (⊥-initial Z)
@@ -670,4 +705,3 @@ module _ {A : 𝓤 ̇ }
    g {x} {y} x⊑y = {!   !}
 
 \end{code}
-     
