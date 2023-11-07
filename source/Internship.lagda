@@ -407,6 +407,7 @@ data _⊥ A where
  lub' : {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed' (Leq A) α) → A ⊥
 
 postulate
+ Leq-anti-sym : {A : 𝓤 ̇ } (x y : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] x → x ＝ y
  ⊥-is-set : {A : 𝓤 ̇ } → is-set (A ⊥)
 
 data Leq A where
@@ -419,6 +420,9 @@ data Leq A where
                                      (δ : is-directed' (Leq A) α) (v : A ⊥)
                                    → ((i : I) → α i ⊑[ A ] v)
                                    → lub' (α , δ) ⊑[ A ] v
+
+postulate
+ Leq-is-prop-valued : {A : 𝓤 ̇ } (x y : A ⊥) → is-prop (x ⊑[ A ] y)
 
 lub : {A : 𝓤 ̇ } {I : 𝓥 ̇ } → (Σ α ꞉ (I → A ⊥) , is-directed (Leq A) α) → A ⊥
 lub {A = A} (α , δ) = lub' (α , ⌜ is-directed≃is-directed' (Leq A) α ⌝ δ)
@@ -437,10 +441,6 @@ lub-is-lowerbound-of-upperbounds {A = A} {α = α} δ =
 lub-is-sup : {A : 𝓤 ̇ } {I : 𝓥 ̇ } {α : I → A ⊥} (δ : is-directed (Leq A) α)
            → is-sup (Leq A) (lub (α , δ)) α
 lub-is-sup δ = lub-is-upperbound δ , lub-is-lowerbound-of-upperbounds δ
-
-postulate
- Leq-is-prop-valued : {A : 𝓤 ̇ } (x y : A ⊥) → is-prop (x ⊑[ A ] y)
- Leq-anti-sym : {A : 𝓤 ̇ } (x y : A ⊥) → x ⊑[ A ] y → y ⊑[ A ] x → x ＝ y
 
 Lift-as-DCPO : (A : 𝓤 ̇ ) → DCPO
 Lift-as-DCPO A = A ⊥ , Leq A , pa , γ
@@ -467,8 +467,8 @@ postulate
  --
  -- However, this is also what they do in [1], see
  -- https://www.cse.chalmers.se/~nad/publications/altenkirch-danielsson-kraus-partiality/Partiality-algebra.Eliminators.html#3936
- ⊥-elim : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣)
-        → is-singleton (DPartHom (Lift-as-DPart A) X)
+ ⊥-initial : {A : 𝓤 ̇ } (X : DPartOb A 𝓦 𝓣)
+           → is-singleton (DPartHom (Lift-as-DPart A) X)
 
 -- We actually need P to be prop-valued here, as otherwise we cannot prove that
 -- antisymmetry holds in the DCPO Z
@@ -512,14 +512,162 @@ postulate
     pr₁-continious I α δ = lub-is-sup δ
 
   f : DPartHom (Lift-as-DPart A) Z
-  f = center (⊥-elim Z)
+  f = center (⊥-initial Z)
 
   pr₁∘f : pr₁ ∘ DPart[ Lift-as-DPart A , Z ]⟨ f ⟩ ＝ id
   pr₁∘f = ap (DPart[ Lift-as-DPart A , Lift-as-DPart A ]⟨_⟩) γ
    where
     γ : DPartComp (Lift-as-DPart A) Z (Lift-as-DPart A) f pr₁-as-DPartHom
      ＝ DPartId (Lift-as-DPart A)
-    γ = singletons-are-props (⊥-elim (Lift-as-DPart A)) _ _
+    γ = singletons-are-props (⊥-initial (Lift-as-DPart A)) _ _
+
+module _ {A : 𝓤 ̇ }
+         (P : A ⊥ → 𝓦 ̇ )
+         (Q : {x y : A ⊥} → P x → P y → x ⊑[ A ] y → 𝓦' ̇ )
+        where
+
+ _Σ⊑_ : Σ P → Σ P → 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦' ̇
+ (x , px) Σ⊑ (y , py) = Σ x⊑y ꞉ x ⊑[ A ] y , Q px py x⊑y
+
+ Σ⊑-to-⊑ : {x y : Σ P} → x Σ⊑ y → pr₁ x ⊑[ A ] pr₁ y
+ Σ⊑-to-⊑ = pr₁
+
+ Σ⊑-directedness-to-⊑-directedness : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α)
+                                  → is-directed (Leq A) (pr₁ ∘ α)
+ Σ⊑-directedness-to-⊑-directedness {α = α} δ =
+  inhabited-if-directed _Σ⊑_ α δ ,
+  λ i j →
+   ∥∥-functor
+    (λ (k , αᵢΣ⊑αₖ , αⱼΣ⊑αₖ) → k , Σ⊑-to-⊑ αᵢΣ⊑αₖ , Σ⊑-to-⊑ αⱼΣ⊑αₖ)
+    (semidirected-if-directed _Σ⊑_ α δ i j)
+
+ record ElimArgs : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓦' ̇  where
+  field
+   P-set-valued : (x : A ⊥) → is-set (P x)
+   P-bot        : P bot
+   P-incl       : (a : A) → P (incl a)
+   P-lub        : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
+                → ((i : I) → P (α i))
+                → P (lub (α , δ))
+
+   Q-prop-valued : {x y : A ⊥} (px : P x) (py : P y) (x⊑y : x ⊑[ A ] y)
+                 → is-prop (Q px py x⊑y)
+   Q-refl        : {x : A ⊥} (px : P x) → Q px px (Leq-refl x)
+   Q-trans       : {x y z : A ⊥} (px : P x) (py : P y) (pz : P z)
+                 → (x⊑y : x ⊑[ A ] y) (y⊑z : y ⊑[ A ] z)
+                 → Q px py x⊑y
+                 → Q py pz y⊑z
+                 → Q px pz (Leq-trans x y z x⊑y y⊑z)
+   -- FIXME: In Cubical, we probably want to use a PathOver instead of the transport
+   Q-anti-sym    : {x y : A ⊥} (px : P x) (py : P y)
+                 → (x⊑y : x ⊑[ A ] y) (y⊑x : y ⊑[ A ] x)
+                 → Q px py x⊑y
+                 → Q py px y⊑x
+                 → transport P (Leq-anti-sym x y x⊑y y⊑x) px ＝ py
+   Q-bot         : {x : A ⊥} → (p : P x) → Q P-bot p (bot-leq x)
+   Q-upperbound  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
+                 → (p : (i : I) → P (α i))
+                 → (i : I) → Q (p i) (P-lub α δ p) (lub-is-upperbound δ i)
+   Q-lowerbound-of-upperbounds
+                 : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
+                 → (p : (i : I) → P (α i))
+                 → (v : A ⊥) (v-upper : (i : I) → α i ⊑[ A ] v) (pv : P v)
+                 → Q (P-lub α δ p) pv (lub-is-lowerbound-of-upperbounds δ v v-upper)
+
+ record Eliminator (args : ElimArgs) : 𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦 ⊔ 𝓦' ̇  where
+  open ElimArgs args
+
+  field
+   ⊥-elim : (x : A ⊥) → P x
+   ⊑-elim : {x y : A ⊥} (x⊑y : x ⊑[ A ] y) → Q (⊥-elim x) (⊥-elim y) x⊑y
+
+   ⊥-elim-β-bot  : ⊥-elim bot ＝ P-bot
+   ⊥-elim-β-incl : (a : A) → ⊥-elim (incl a) ＝ P-incl a
+   ⊥-elim-β-lub  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-directed (Leq A) α)
+                 → (p : (i : I) → P (α i))
+                 → ⊥-elim (lub (α , δ)) ＝ P-lub α δ p
+   -- TODO: Computation rule for [Leq-antisym]
+
+ ⊥-elim : (args : ElimArgs) → Eliminator args
+ ⊥-elim args = record
+  { ⊥-elim = f
+  ; ⊑-elim = g
+  ; ⊥-elim-β-bot = β-bot
+  ; ⊥-elim-β-incl = {!   !}
+  ; ⊥-elim-β-lub = {!   !}
+  }
+  where
+   open ElimArgs args
+
+   Z : DPartOb A (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦) (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦')
+   Z = record { 𝓓 = 𝓓 , (bot , P-bot) , λ (y , py) → bot-leq y , Q-bot py
+              ; η = λ a → incl a , P-incl a }
+    where
+     Σ⊑-PosetAxioms : PosetAxioms.poset-axioms _Σ⊑_
+     Σ⊑-PosetAxioms =
+      Σ-is-set ⊥-is-set P-set-valued ,
+      (λ (x , px) (y , py) → Σ-is-prop (Leq-is-prop-valued x y) (Q-prop-valued px py)) ,
+      (λ (x , px) → Leq-refl x , Q-refl px) ,
+      (λ (x , px) (y , py) (z , pz) (x⊑y , qxy) (y⊑z , qyz) → Leq-trans x y z x⊑y y⊑z , Q-trans px py pz x⊑y y⊑z qxy qyz) ,
+      (λ (x , px) (y , py) (x⊑y , qxy) (y⊑x , qyx) → to-Σ-＝ (Leq-anti-sym x y x⊑y y⊑x , Q-anti-sym px py x⊑y y⊑x qxy qyx))
+
+     Σ-lub : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α) → Σ P
+     Σ-lub {α = α} δ =
+      lub (pr₁ ∘ α , Σ⊑-directedness-to-⊑-directedness δ) ,
+      P-lub (pr₁ ∘ α) (Σ⊑-directedness-to-⊑-directedness δ) (pr₂ ∘ α)
+
+     Σ⊑-directed-completeness : is-directed-complete _Σ⊑_
+     Σ⊑-directed-completeness I α δ =
+      Σ-lub δ ,
+      Σ-lub-is-upperbound ,
+      Σ-lub-is-lowerbound-of-upperbounds
+      where
+       Σ-lub-is-upperbound : is-upperbound _Σ⊑_ (Σ-lub δ) α
+       Σ-lub-is-upperbound i =
+        lub-is-upperbound (Σ⊑-directedness-to-⊑-directedness δ) i ,
+        Q-upperbound (pr₁ ∘ α) (Σ⊑-directedness-to-⊑-directedness δ) (pr₂ ∘ α) i
+
+       Σ-lub-is-lowerbound-of-upperbounds : is-lowerbound-of-upperbounds _Σ⊑_ (Σ-lub δ) α
+       Σ-lub-is-lowerbound-of-upperbounds (v , pv) v-upperbound =
+        lub-is-lowerbound-of-upperbounds (Σ⊑-directedness-to-⊑-directedness δ) v
+         (λ i → Σ⊑-to-⊑ (v-upperbound i)) ,
+        Q-lowerbound-of-upperbounds (pr₁ ∘ α) (Σ⊑-directedness-to-⊑-directedness δ)
+         (pr₂ ∘ α) v (λ i → Σ⊑-to-⊑ (v-upperbound i)) pv
+
+     𝓓 : DCPO {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦} {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦'}
+     𝓓 = Σ P , _Σ⊑_ , Σ⊑-PosetAxioms , Σ⊑-directed-completeness
+
+   module Z = DPartOb Z
+
+   pr₁-as-DPartHom : DPartHom Z (Lift-as-DPart A)
+   pr₁-as-DPartHom = (pr₁ , pr₁-continious) , refl , λ _ → refl
+    where
+     pr₁-continious : is-continuous (Z.𝓓 ⁻) (Lift-as-DCPO A) pr₁
+     pr₁-continious I α δ = lub-is-sup (Σ⊑-directedness-to-⊑-directedness δ)
+
+   ! : DPartHom (Lift-as-DPart A) Z
+   ! = center (⊥-initial Z)
+
+   id' : DPartHom (Lift-as-DPart A) (Lift-as-DPart A)
+   id' = DPartComp (Lift-as-DPart A) Z (Lift-as-DPart A) ! pr₁-as-DPartHom
+
+   id'＝id : DPart[ Lift-as-DPart A , Lift-as-DPart A ]⟨ id' ⟩ ＝ id
+   id'＝id = ap (DPart[ Lift-as-DPart A , Lift-as-DPart A ]⟨_⟩) γ
+    where
+     γ : DPartComp (Lift-as-DPart A) Z (Lift-as-DPart A) ! pr₁-as-DPartHom
+      ＝ DPartId (Lift-as-DPart A)
+     γ = singletons-are-props (⊥-initial (Lift-as-DPart A)) _ _
+
+   f : (x : A ⊥) → P x
+   f x = transport P (happly id'＝id x) (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x))
+
+   β-bot : f bot ＝ P-bot
+   β-bot = f bot ＝⟨ refl ⟩
+           transport P (happly id'＝id bot) (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ bot)) ＝⟨ {!   !} ⟩
+           P-bot ∎
+
+   g : {x y : A ⊥} (x⊑y : x ⊑[ A ] y) → Q (f x) (f y) x⊑y
+   g {x} {y} x⊑y = {!   !}
 
 \end{code}
- 
+     
