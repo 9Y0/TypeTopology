@@ -155,11 +155,19 @@ module _ {𝓤 : Universe} {A : 𝓤 ̇ }
    module X = DPartOb X
    module Y = DPartOb Y
 
+ underlying-scott-continuous-map : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                                   (f : DPartHom X Y)
+                                 → let module X = DPartOb X
+                                       module Y = DPartOb Y
+                                in DCPO⊥[ X.𝓓 , Y.𝓓 ]
+ underlying-scott-continuous-map X Y (f , _ , _) = f
+
  DPart[_,_]⟨_⟩ : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
                → let module X = DPartOb X
                      module Y = DPartOb Y
               in (f : DPartHom X Y) → ⟪ X.𝓓 ⟫ → ⟪ Y.𝓓 ⟫
- DPart[ X , Y ]⟨ f , _ , _ ⟩ = underlying-function (X.𝓓 ⁻) (Y.𝓓 ⁻) f
+ DPart[ X , Y ]⟨ f ⟩ =
+  underlying-function (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f)
   where
    module X = DPartOb X
    module Y = DPartOb Y
@@ -169,17 +177,22 @@ module _ {𝓤 : Universe} {A : 𝓤 ̇ }
                         → let module X = DPartOb X
                               module Y = DPartOb Y
                        in is-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) DPart[ X , Y ]⟨ f ⟩
- continuity-of-DPartHom X Y (f , _ , _) = continuity-of-function (X.𝓓 ⁻) (Y.𝓓 ⁻) f
+ continuity-of-DPartHom X Y f =
+  continuity-of-function (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f)
   where
    module X = DPartOb X
    module Y = DPartOb Y
 
- underlying-scott-continuous-map : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
-                                   (f : DPartHom X Y)
-                                 → let module X = DPartOb X
-                                       module Y = DPartOb Y
-                                in DCPO⊥[ X.𝓓 , Y.𝓓 ]
- underlying-scott-continuous-map X Y (f , _ , _) = f
+ monotonicity-of-DPartHom : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
+                            (f : DPartHom X Y)
+                          → let module X = DPartOb X
+                                module Y = DPartOb Y
+                         in is-monotone (X.𝓓 ⁻) (Y.𝓓 ⁻) DPart[ X , Y ]⟨ f ⟩
+ monotonicity-of-DPartHom X Y f =
+  monotone-if-continuous (X.𝓓 ⁻) (Y.𝓓 ⁻) (underlying-scott-continuous-map X Y f)
+  where
+   module X = DPartOb X
+   module Y = DPartOb Y
 
  strictness : (X : DPartOb A 𝓦₁ 𝓣₁) (Y : DPartOb A 𝓦₂ 𝓣₂)
               (f : DPartHom X Y)
@@ -539,62 +552,64 @@ module _ {A : 𝓤 ̇ }
    ⊥-elim-β-incl : (a : A) → ⊥-elim (incl a) ＝ P-incl a
    ⊥-elim-β-lub  : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
                  → ⊥-elim (lub (α , ⊑-directed-if-Q-directed δ)) ＝ P-lub α δ
-   ⊥-elim-β-anti-sym : {x y : A ⊥} (px : P x) (py : P y)
-                     → (x⊑y : x ⊑[ A ] y) (y⊑x : y ⊑[ A ] x)
-                     → (qxy : Q px py x⊑y) (qyx : Q py px y⊑x)
-                     → apd ⊥-elim (Leq-anti-sym x y x⊑y y⊑x)
-                     ＝ Q-anti-sym (⊥-elim x) (⊥-elim y) x⊑y y⊑x (⊑-elim x⊑y) (⊑-elim y⊑x)
+  -- The following rule isn't needed as we already know that Q is a set.
+  -- Furthermore, it probably also doesn't hold, it we do not use the REWRITE pragmas
+  -- for the above computation rules.
+  --  ⊥-elim-β-anti-sym : {x y : A ⊥} (px : P x) (py : P y)
+  --                    → (x⊑y : x ⊑[ A ] y) (y⊑x : y ⊑[ A ] x)
+  --                    → (qxy : Q px py x⊑y) (qyx : Q py px y⊑x)
+  --                    → apd ⊥-elim (Leq-anti-sym x y x⊑y y⊑x)
+  --                    ＝ Q-anti-sym (⊥-elim x) (⊥-elim y) x⊑y y⊑x (⊑-elim x⊑y) (⊑-elim y⊑x)
 
  ⊥-elim : (args : ElimArgs) → Eliminator args
  ⊥-elim args = record
   { ⊥-elim = f
-  ; ⊑-elim = g
-  ; ⊥-elim-β-bot = {!   !}
-  ; ⊥-elim-β-incl = {!   !}
-  ; ⊥-elim-β-lub = {!   !}
-  ; ⊥-elim-β-anti-sym = {!   !} }
+  ; ⊑-elim = f-monotone
+  ; ⊥-elim-β-bot = β-bot
+  ; ⊥-elim-β-incl = β-incl
+  ; ⊥-elim-β-lub = β-lub }
   where
    open ElimArgs args
+
+   Σ⊑-PosetAxioms : PosetAxioms.poset-axioms _Σ⊑_
+   Σ⊑-PosetAxioms =
+    Σ-is-set ⊥-is-set P-set-valued ,
+    (λ (x , px) (y , py) → Σ-is-prop (Leq-is-prop-valued x y) (Q-prop-valued px py)) ,
+    (λ (x , px) → Leq-refl x , Q-refl px) ,
+    (λ (x , px) (y , py) (z , pz) (x⊑y , qxy) (y⊑z , qyz) → Leq-trans x y z x⊑y y⊑z , Q-trans px py pz x⊑y y⊑z qxy qyz) ,
+    (λ (x , px) (y , py) (x⊑y , qxy) (y⊑x , qyx) → to-Σ-＝ (Leq-anti-sym x y x⊑y y⊑x , Q-anti-sym px py x⊑y y⊑x qxy qyx))
+
+   Σ-lub : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α) → Σ P
+   Σ-lub {α = α} δ =
+    lub (pr₁ ∘ α , ⊑-directed-if-Σ⊑-directed δ) ,
+    P-lub (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ)
+
+   Σ⊑-directed-completeness : is-directed-complete _Σ⊑_
+   Σ⊑-directed-completeness I α δ =
+    Σ-lub δ ,
+    Σ-lub-is-upperbound ,
+    Σ-lub-is-lowerbound-of-upperbounds
+    where
+     Σ-lub-is-upperbound : is-upperbound _Σ⊑_ (Σ-lub δ) α
+     Σ-lub-is-upperbound i =
+      lub-is-upperbound (⊑-directed-if-Σ⊑-directed δ) i ,
+      Q-upperbound (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ) i
+
+     Σ-lub-is-lowerbound-of-upperbounds : is-lowerbound-of-upperbounds _Σ⊑_ (Σ-lub δ) α
+     Σ-lub-is-lowerbound-of-upperbounds (v , pv) v-upperbound =
+      lub-is-lowerbound-of-upperbounds (⊑-directed-if-Σ⊑-directed δ) v
+       (λ i → Σ⊑-to-⊑ (v-upperbound i)) ,
+      Q-lowerbound-of-upperbounds (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ)
+       v (λ i → Σ⊑-to-⊑ (v-upperbound i)) pv
+
+   𝓓 : DCPO {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦} {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦'}
+   𝓓 = Σ P , _Σ⊑_ , Σ⊑-PosetAxioms , Σ⊑-directed-completeness
 
    Z : DPartOb A (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦) (𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦')
    Z = record { 𝓓 = 𝓓 ,
                     (bot , P-bot) ,
                     (λ (y , py) → bot-leq y , Q-bot py)
-              ; η = λ a → incl a , P-incl a }
-    where
-     Σ⊑-PosetAxioms : PosetAxioms.poset-axioms _Σ⊑_
-     Σ⊑-PosetAxioms =
-      Σ-is-set ⊥-is-set P-set-valued ,
-      (λ (x , px) (y , py) → Σ-is-prop (Leq-is-prop-valued x y) (Q-prop-valued px py)) ,
-      (λ (x , px) → Leq-refl x , Q-refl px) ,
-      (λ (x , px) (y , py) (z , pz) (x⊑y , qxy) (y⊑z , qyz) → Leq-trans x y z x⊑y y⊑z , Q-trans px py pz x⊑y y⊑z qxy qyz) ,
-      (λ (x , px) (y , py) (x⊑y , qxy) (y⊑x , qyx) → to-Σ-＝ (Leq-anti-sym x y x⊑y y⊑x , Q-anti-sym px py x⊑y y⊑x qxy qyx))
-
-     Σ-lub : {I : 𝓥 ̇ } {α : I → Σ P} (δ : is-directed _Σ⊑_ α) → Σ P
-     Σ-lub {α = α} δ =
-      lub (pr₁ ∘ α , ⊑-directed-if-Σ⊑-directed δ) ,
-      P-lub (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ)
-
-     Σ⊑-directed-completeness : is-directed-complete _Σ⊑_
-     Σ⊑-directed-completeness I α δ =
-      Σ-lub δ ,
-      Σ-lub-is-upperbound ,
-      Σ-lub-is-lowerbound-of-upperbounds
-      where
-       Σ-lub-is-upperbound : is-upperbound _Σ⊑_ (Σ-lub δ) α
-       Σ-lub-is-upperbound i =
-        lub-is-upperbound (⊑-directed-if-Σ⊑-directed δ) i ,
-        Q-upperbound (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ) i
-
-       Σ-lub-is-lowerbound-of-upperbounds : is-lowerbound-of-upperbounds _Σ⊑_ (Σ-lub δ) α
-       Σ-lub-is-lowerbound-of-upperbounds (v , pv) v-upperbound =
-        lub-is-lowerbound-of-upperbounds (⊑-directed-if-Σ⊑-directed δ) v
-         (λ i → Σ⊑-to-⊑ (v-upperbound i)) ,
-        Q-lowerbound-of-upperbounds (pr₁ ∘ α) (Q-directed-if-Σ⊑-directed δ)
-         v (λ i → Σ⊑-to-⊑ (v-upperbound i)) pv
-
-     𝓓 : DCPO {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦} {𝓥 ⁺ ⊔ 𝓤 ⊔ 𝓦'}
-     𝓓 = Σ P , _Σ⊑_ , Σ⊑-PosetAxioms , Σ⊑-directed-completeness
+              ; η = λ a → incl a , P-incl a }     
 
    module Z = DPartOb Z
 
@@ -620,12 +635,157 @@ module _ {A : 𝓤 ̇ }
    f : (x : A ⊥) → P x
    f x = transport P (happly id'＝id x) (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x))
 
-   β-bot : f bot ＝ P-bot
-   β-bot = f bot ＝⟨ refl ⟩
-           transport P (happly id'＝id bot) (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ bot)) ＝⟨ {!   !} ⟩
-           P-bot ∎
+   f-β : {x : A ⊥} {p : P x}
+       → DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x ＝ x , p
+       → f x ＝ p
+   f-β {x} {p} !x =
+    f x
+      ＝⟨ refl ⟩
+    transport P (happly id'＝id x) (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x))
+      ＝⟨ ap (λ q → transport P q (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x)))
+          (⊥-is-set (happly id'＝id x) (ap pr₁ !x)) ⟩
+    transport P (ap pr₁ !x) (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x))
+      ＝⟨ from-Σ-＝' !x ⟩
+    p ∎
 
-   g : {x y : A ⊥} (x⊑y : x ⊑[ A ] y) → Q (f x) (f y) x⊑y
-   g {x} {y} x⊑y = {!   !}
+   β-bot : f bot ＝ P-bot
+   β-bot = f-β (strictness (Lift-as-DPart A) Z !)
+
+   β-incl : (a : A) → f (incl a) ＝ P-incl a
+   β-incl a = f-β (η-preservation (Lift-as-DPart A) Z ! a)
+
+   β-lub : {I : 𝓥 ̇ } (α : I → A ⊥) (δ : is-Q-directed α)
+         → f (lub (α , ⊑-directed-if-Q-directed δ)) ＝ P-lub α δ
+   β-lub α δ =
+    f-β (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (lub (α , ⊑-directed-if-Q-directed δ))
+           ＝⟨ continuous-∐-＝ (Lift-as-DCPO A) (Z.𝓓 ⁻) (underlying-scott-continuous-map (Lift-as-DPart A) Z !) (⊑-directed-if-Q-directed δ) ⟩
+         Σ-lub (image-is-directed' (Lift-as-DCPO A) (Z.𝓓 ⁻) (underlying-scott-continuous-map (Lift-as-DPart A) Z !) (⊑-directed-if-Q-directed δ))
+           ＝⟨ refl ⟩
+         lub ((λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i))) ,
+              ⊑-directed-if-Σ⊑-directed (image-is-directed' (Lift-as-DCPO A) (Z.𝓓 ⁻)
+               (underlying-scott-continuous-map (Lift-as-DPart A) Z !)
+               (⊑-directed-if-Q-directed δ))) ,
+         P-lub (λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i)))
+               (Q-directed-if-Σ⊑-directed (image-is-directed' (Lift-as-DCPO A) (Z.𝓓 ⁻)
+               (underlying-scott-continuous-map (Lift-as-DPart A) Z !)
+               (⊑-directed-if-Q-directed δ)))
+           ＝⟨ to-Σ-＝ (ap lub lem2 , lem3) ⟩
+         lub (α , ⊑-directed-if-Q-directed δ) , P-lub α δ ∎)
+    where
+     lem1 : (λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i))) ＝ α
+     lem1 = ap (_∘ α) id'＝id
+
+     lem2 : ((λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i))) ,
+             ⊑-directed-if-Σ⊑-directed
+              (image-is-directed' (Lift-as-DCPO A) (Z.𝓓 ⁻)
+                (underlying-scott-continuous-map (Lift-as-DPart A) Z !)
+                (⊑-directed-if-Q-directed δ)))
+          ＝ (α , ⊑-directed-if-Q-directed δ)
+     lem2 = to-Σ-＝ (lem1 , being-directed-is-prop (Leq A) α _ _)
+
+     lem3 : transport P (ap lub lem2)
+             (P-lub
+              (λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i)))
+              (Q-directed-if-Σ⊑-directed
+               (image-is-directed' (Lift-as-DCPO A) 𝓓
+                (underlying-scott-continuous-map (Lift-as-DPart A) Z !)
+                (⊑-directed-if-Q-directed δ))))
+          ＝ P-lub α δ
+     lem3 = transport P (ap lub lem2)
+             (P-lub
+              (λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i)))
+              (Q-directed-if-Σ⊑-directed
+               (image-is-directed' (Lift-as-DCPO A) 𝓓
+                (underlying-scott-continuous-map (Lift-as-DPart A) Z !)
+                (⊑-directed-if-Q-directed δ))))
+              ＝⟨ transport-ap P lub lem2 ⁻¹ ⟩
+            transport (P ∘ lub) lem2
+             (P-lub
+              (λ i → pr₁ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ (α i)))
+              (Q-directed-if-Σ⊑-directed
+               (image-is-directed' (Lift-as-DCPO A) 𝓓
+                (underlying-scott-continuous-map (Lift-as-DPart A) Z !)
+                (⊑-directed-if-Q-directed δ))))
+              ＝⟨ {!   !} ⟩
+            P-lub α δ ∎
+
+   f-monotone : {x y : A ⊥} (x⊑y : x ⊑[ A ] y) → Q (f x) (f y) x⊑y
+   f-monotone {x} {y} x⊑y = {! Q-prop-valued (f x) (f y) x⊑y ?  !}
+    where
+    --  test : Q (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x))
+    --           (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ y))
+    --           (pr₁ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y))
+    --  test = pr₂ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y)
+
+    --  test1 : Q (transport⁻¹ P (happly id'＝id x) (f x))
+    --            (transport⁻¹ P (happly id'＝id y) (f y))
+    --            (transport₂⁻¹ (Leq A) (happly id'＝id x) (happly id'＝id y) x⊑y)
+    --  test1 = transport₃ Q (forth-and-back-transport (happly id'＝id x) ⁻¹)
+    --                       (forth-and-back-transport (happly id'＝id y) ⁻¹)
+    --                       (Leq-is-prop-valued _ _ _ _)
+    --                       test
+
+    --  test2 : Q {!   !}
+    --            {!   !}
+    --            {!   !}
+    --  test2 = transport₃ Q {! happly id'＝id x  !} {!   !} {!   !} test
+
+     Q' : (Σ xy ꞉ A ⊥ × A ⊥ , P (pr₁ xy) × P (pr₂ xy) × pr₁ xy ⊑[ A ] pr₂ xy) → 𝓦' ̇
+     Q' (_ , px , py , x⊑y) = Q px py x⊑y
+
+     term1 : Q (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x))
+               (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ y))
+               (pr₁ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y))
+     term1 = pr₂ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y)
+
+    --  lem = transport
+    --         (λ xy → P (pr₁ xy) × P (pr₂ xy) × Leq A (pr₁ xy) (pr₂ xy))
+    --         (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+    --         ( pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x)
+    --         , pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ y)
+    --         , pr₁ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y))
+           
+    --        ＝⟨ ? ⟩
+          
+    --        (f x , f y , x⊑y) ∎
+
+     term2 : Q (f x) (f y) x⊑y
+     term2 = transport Q' (to-Σ-＝ (ap₂ _,_ (happly id'＝id x) (happly id'＝id y) ,
+      (transport
+        (λ xy → P (pr₁ xy) × P (pr₂ xy) × Leq A (pr₁ xy) (pr₂ xy))
+        (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+        (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x) ,
+         pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ y) ,
+         pr₁ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y))
+    
+      ＝⟨ transport-× (λ xy → P (pr₁ xy)) (λ xy → P (pr₂ xy) × Leq A (pr₁ xy) (pr₂ xy)) (ap₂ _,_ (happly id'＝id x) (happly id'＝id y)) ⟩
+
+      transport (λ xy → P (pr₁ xy))
+       (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+       (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x)) ,
+      transport (λ xy → P (pr₂ xy) × Leq A (pr₁ xy) (pr₂ xy))
+       (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+       (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ y) ,
+        pr₁ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y))
+
+      ＝⟨ ap₂ _,_ refl (transport-× (λ xy → P (pr₂ xy)) (λ xy → Leq A (pr₁ xy) (pr₂ xy)) (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))) ⟩
+
+      -- transport (λ xy → P (pr₁ xy))
+      --  (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+      --  (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ x)) ,
+      -- transport (λ xy → P (pr₂ xy))
+      --  (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+      --  (pr₂ (DPart[ Lift-as-DPart A , Z ]⟨ ! ⟩ y)) ,
+      -- transport (λ xy → Leq A (pr₁ xy) (pr₂ xy))
+      --  (ap₂ _,_ (happly id'＝id x) (happly id'＝id y))
+      --  (pr₁ (monotonicity-of-DPartHom (Lift-as-DPart A) Z ! x y x⊑y))
+      -- If we fill theese, Agda will loop...
+      ? , ? , ?
+
+      ＝⟨ {!   !} ⟩
+
+      {!   !} ∎)
+      )) term1
 
 \end{code}
+  
